@@ -1,11 +1,15 @@
 #include <stan/prob/distributions/univariate/continuous/chi_square.hpp>
 #include <gtest/gtest.h>
 #include <boost/random/mersenne_twister.hpp>
-#include<boost/math/distributions.hpp>
+#include <boost/math/distributions.hpp>
 
-TEST(ProbDistributionsChiSquare, random) {
+TEST(ProbDistributionsChiSquare, error_check) {
   boost::random::mt19937 rng;
   EXPECT_NO_THROW(stan::prob::chi_square_rng(2.0,rng));
+
+  EXPECT_THROW(stan::prob::chi_square_rng(-2.0,rng),std::domain_error);
+  EXPECT_THROW(stan::prob::chi_square_rng(stan::math::positive_infinity(),rng),
+               std::domain_error);
 }
 
 TEST(ProbDistributionsChiSquare, chiSquareGoodnessFitTest) {

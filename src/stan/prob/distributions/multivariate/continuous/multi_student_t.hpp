@@ -4,6 +4,7 @@
 #include <cstdlib>
 
 #include <boost/math/special_functions/gamma.hpp>
+#include <boost/math/special_functions/fpclassify.hpp>
 
 #include <stan/math/error_handling.hpp>
 #include <stan/math/matrix_error_handling.hpp>
@@ -87,7 +88,7 @@ namespace stan {
                           "Degrees of freedom parameter", &lp))
         return lp;
       
-      using std::isinf;
+      using boost::math::isinf;
 
       if (isinf(nu)) // already checked nu > 0
         return multi_normal_log(y,mu,Sigma);
@@ -145,8 +146,22 @@ namespace stan {
     inline Eigen::VectorXd
     multi_student_t_rng(const double nu,
                         const Eigen::Matrix<double,Eigen::Dynamic,1>& mu,
-                     const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& s,
+                        const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& s,
                      RNG& rng) {
+
+      static const char* function = "stan::prob::multi_student_t_rng(%1%)";
+
+      using stan::math::check_finite;
+      using stan::math::check_not_nan;
+      using stan::math::check_symmetric;
+      using stan::math::check_positive;      
+ 
+      check_finite(function, mu, "Location parameter");
+      check_symmetric(function, s, "Scale parameter");
+      check_not_nan(function, nu, 
+                    "Degrees of freedom parameter");
+      check_positive(function, nu, 
+                     "Degrees of freedom parameter");
 
       Eigen::VectorXd z(s.cols());
       z.setZero();

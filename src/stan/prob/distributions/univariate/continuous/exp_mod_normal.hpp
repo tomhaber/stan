@@ -7,8 +7,9 @@
 #include <stan/prob/distributions/univariate/continuous/normal.hpp>
 #include <stan/prob/distributions/univariate/continuous/exponential.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
 #include <stan/prob/traits.hpp>
@@ -502,6 +503,21 @@ namespace stan {
                        const double sigma,
                        const double lambda,
                        RNG& rng) {
+
+      static const char* function = "stan::prob::exp_mod_normal_rng(%1%)";
+
+      using stan::math::check_positive;
+      using stan::math::check_finite;
+
+      if (!check_finite(function, mu, "Location parameter"))
+        return 0;
+      if (!check_finite(function, lambda, "Inv_scale parameter"))
+        return 0;
+      if (!check_positive(function, lambda, "Inv_scale parameter"))
+        return 0;
+      if (!check_positive(function, sigma, "Scale parameter"))
+        return 0;
+
       return stan::prob::normal_rng(mu, sigma,rng) + stan::prob::exponential_rng(lambda, rng);
     }
   }

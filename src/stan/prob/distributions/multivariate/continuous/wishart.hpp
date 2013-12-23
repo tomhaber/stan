@@ -4,7 +4,7 @@
 #include <stan/prob/constants.hpp>
 #include <stan/math/matrix_error_handling.hpp>
 #include <stan/math/error_handling.hpp>
-#include <stan/agrad/matrix.hpp>
+#include <stan/agrad/rev/matrix.hpp>
 #include <stan/prob/traits.hpp>
 #include <boost/concept_check.hpp>
 #include "stan/prob/distributions/univariate/continuous/normal.hpp"
@@ -149,6 +149,16 @@ namespace stan {
     wishart_rng(const double nu,
                 const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& S,
                 RNG& rng) {
+
+      static const char* function = "stan::prob::wishart_rng(%1%)";
+
+      using stan::math::check_size_match;
+      using stan::math::check_positive;
+
+      check_positive(function,nu,"degrees of freedom");
+      check_size_match(function, 
+                       S.rows(), "Rows of scale parameter",
+                       S.cols(), "columns of scale parameter");
 
       Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> B(S.rows(), S.cols());
       B.setZero();

@@ -1,14 +1,19 @@
 #include <stan/prob/distributions/univariate/continuous/exponential.hpp>
 #include <gtest/gtest.h>
 #include <boost/random/mersenne_twister.hpp>
-#include<boost/math/distributions.hpp>
+#include <boost/math/distributions.hpp>
+#include <stan/math/constants.hpp>
 
-TEST(ProbDistributionsExponential, random) {
+TEST(ProbDistributionsExponential, error_check) {
   boost::random::mt19937 rng;
   EXPECT_NO_THROW(stan::prob::exponential_rng(2.0,rng));
+
+  EXPECT_THROW(stan::prob::exponential_rng(-2.0,rng),std::domain_error);
+  EXPECT_THROW(stan::prob::exponential_rng(stan::math::positive_infinity(),rng),
+               std::domain_error);
 }
 
-TEST(ProbDistributionsBeta, chiSquareGoodnessFitTest) {
+TEST(ProbDistributionsExponential, chiSquareGoodnessFitTest) {
   boost::random::mt19937 rng;
   int N = 10000;
   int K = boost::math::round(2 * std::pow(N, 0.4));

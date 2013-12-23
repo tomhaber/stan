@@ -301,6 +301,21 @@ namespace stan {
     function_signatures::function_signatures() { 
 #include <stan/gm/function_signatures.h>
     }
+    std::set<std::string>
+    function_signatures::key_set() const {
+      using std::map;
+      using std::set;
+      using std::string;
+      using std::vector;
+      // inefficient:  if used intensively, should provide const iterator adaptor
+      set<string> result;
+      for (map<string,vector<function_signature_t> >::const_iterator it = sigs_map_.begin();
+           it != sigs_map_.end();
+           ++it)
+        result.insert(it->first);
+      return result;
+    }
+
     function_signatures* function_signatures::sigs_ = 0;
 
 
@@ -904,12 +919,26 @@ namespace stan {
     statement::statement(const nil& st) : statement_(st) { }
     statement::statement(const assignment& st) : statement_(st) { }
     statement::statement(const sample& st) : statement_(st) { }
+    statement::statement(const increment_log_prob_statement& st) : statement_(st) { }
     statement::statement(const statements& st) : statement_(st) { }
+    statement::statement(const expression& st) : statement_(st) { }
     statement::statement(const for_statement& st) : statement_(st) { }
     statement::statement(const while_statement& st) : statement_(st) { }
     statement::statement(const conditional_statement& st) : statement_(st) { }
     statement::statement(const print_statement& st) : statement_(st) { }
     statement::statement(const no_op_statement& st) : statement_(st) { }
+
+    // template <typename Statement>
+    // statement::statement(const Statement& statement)
+    // : statement_(statement) {
+    // }
+
+
+    increment_log_prob_statement::increment_log_prob_statement() {
+    }
+    increment_log_prob_statement::increment_log_prob_statement(const expression& log_prob)
+      : log_prob_(log_prob) {
+    }
 
     for_statement::for_statement() {
     }

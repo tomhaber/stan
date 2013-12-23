@@ -1,6 +1,7 @@
 #include <stan/prob/distributions/univariate/continuous/normal.hpp>
-#include <boost/math/distributions.hpp>
 #include <gtest/gtest.h>
+#include <stan/agrad/rev.hpp>
+#include <boost/math/distributions.hpp>
 #include <boost/random/mersenne_twister.hpp>
 
 TEST(ProbDistributionsNormal, intVsDouble) {
@@ -26,9 +27,16 @@ TEST(ProbDistributionsNormal, intVsDouble) {
   }
 }
 
-TEST(ProbDistributionsNormal, random) {
+TEST(ProbDistributionsNormal, error_check) {
   boost::random::mt19937 rng;
   EXPECT_NO_THROW(stan::prob::normal_rng(10.0,2.0,rng));
+
+  EXPECT_THROW(stan::prob::normal_rng(10.0,-2.0,rng),std::domain_error);
+  EXPECT_THROW(stan::prob::normal_rng(10.0,0,rng),std::domain_error);
+  EXPECT_THROW(stan::prob::normal_rng(stan::math::positive_infinity(),-2.0,rng),
+               std::domain_error);
+  EXPECT_THROW(stan::prob::normal_rng(2,stan::math::negative_infinity(),rng),
+               std::domain_error);
 }
 
 TEST(ProbDistributionsNormal, chiSquareGoodnessFitTest) {
@@ -45,7 +53,7 @@ TEST(ProbDistributionsNormal, chiSquareGoodnessFitTest) {
   int count = 0;
   int bin [K];
   double expect [K];
-  for(int i = 0 ; i < K; i++){
+  for(int i = 0 ; i < K; i++) {
     bin[i] = 0;
     expect[i] = N / K;
   }

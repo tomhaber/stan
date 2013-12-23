@@ -1,12 +1,12 @@
 #ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__DISCRETE__BETA_BINOMIAL_HPP__
 #define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__DISCRETE__BETA_BINOMIAL_HPP__
 
-
 #include <stan/prob/distributions/univariate/discrete/binomial.hpp>
 #include <stan/prob/distributions/univariate/continuous/beta.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
 #include <stan/math/functions/lbeta.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
@@ -251,11 +251,6 @@ DoubleVectorView<!is_constant_struct<T_size1>::value,
     agrad::OperandsAndPartials<T_size1, T_size2> 
       operands_and_partials(alpha, beta);
           
-    std::fill(operands_and_partials.all_partials,
-              operands_and_partials.all_partials 
-              + operands_and_partials.nvaris, 
-              0.0);
-          
     // Explicit return for extreme values
     // The gradients are technically ill-defined, but treated as zero
     for (size_t i = 0; i < stan::length(n); i++) {
@@ -386,11 +381,6 @@ DoubleVectorView<!is_constant_struct<T_size1>::value,
     agrad::OperandsAndPartials<T_size1, T_size2> 
       operands_and_partials(alpha, beta);
           
-    std::fill(operands_and_partials.all_partials,
-              operands_and_partials.all_partials 
-              + operands_and_partials.nvaris, 
-              0.0);
-          
     // Explicit return for extreme values
     // The gradients are technically ill-defined, but treated as neg infinity
     for (size_t i = 0; i < stan::length(n); i++) {
@@ -512,11 +502,6 @@ DoubleVectorView<!is_constant_struct<T_size1>::value,
     agrad::OperandsAndPartials<T_size1, T_size2> 
       operands_and_partials(alpha, beta);
           
-    std::fill(operands_and_partials.all_partials,
-              operands_and_partials.all_partials 
-              + operands_and_partials.nvaris, 
-              0.0);
-          
     // Explicit return for extreme values
     // The gradients are technically ill-defined, but treated as neg infinity
     for (size_t i = 0; i < stan::length(n); i++) {
@@ -588,6 +573,24 @@ DoubleVectorView<!is_constant_struct<T_size1>::value,
                     const double alpha,
                     const double beta,
                     RNG& rng) {
+
+      static const char* function = "stan::prob::beta_binomial_rng(%1%)";
+
+      using stan::math::check_finite;
+      using stan::math::check_nonnegative;
+      using stan::math::check_positive;
+  
+      if (!check_nonnegative(function, N, "Population size parameter"))
+        return 0;
+      if (!check_finite(function, alpha, "First prior sample size parameter"))
+        return 0;
+      if (!check_positive(function, alpha, "First prior sample size parameter"))
+        return 0;
+      if (!check_finite(function, beta, "Second prior sample size parameter"))
+        return 0;
+      if (!check_positive(function, beta, "Second prior sample size parameter"))
+        return 0;
+
     double a = stan::prob::beta_rng(alpha, beta, rng);
     while(a > 1 || a < 0) 
       a = stan::prob::beta_rng(alpha, beta, rng);

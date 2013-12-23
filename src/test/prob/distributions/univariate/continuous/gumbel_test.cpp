@@ -1,11 +1,18 @@
 #include <stan/prob/distributions/univariate/continuous/gumbel.hpp>
-#include<boost/math/distributions.hpp>
+#include <boost/math/distributions.hpp>
 #include <gtest/gtest.h>
 #include <boost/random/mersenne_twister.hpp>
+#include <stan/math/constants.hpp>
 
-TEST(ProbDistributionsGumbel, random) {
+
+TEST(ProbDistributionsGumbel, error_check) {
   boost::random::mt19937 rng;
   EXPECT_NO_THROW(stan::prob::gumbel_rng(10.0,2.0,rng));
+
+  EXPECT_THROW(stan::prob::gumbel_rng(stan::math::positive_infinity(),2.0,rng),
+               std::domain_error);
+  EXPECT_THROW(stan::prob::gumbel_rng(10.0,-2,rng),std::domain_error);
+
 }
 
 TEST(ProbDistributionsGumbel, chiSquareGoodnessFitTest) {

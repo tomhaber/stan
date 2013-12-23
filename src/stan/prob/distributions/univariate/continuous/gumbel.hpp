@@ -4,7 +4,7 @@
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
@@ -311,6 +311,18 @@ namespace stan {
                RNG& rng) {
       using boost::variate_generator;
       using boost::uniform_01;
+
+      static const char* function = "stan::prob::gumbel_rng(%1%)";
+
+      using stan::math::check_positive;
+      using stan::math::check_finite;
+
+
+      if (!check_finite(function, mu, "Location parameter"))
+        return 0;
+      if (!check_positive(function, beta, "Scale parameter")) 
+        return 0;
+
       variate_generator<RNG&, uniform_01<> >
         uniform01_rng(rng, uniform_01<>());
       return mu - beta * std::log(-std::log(uniform01_rng()));

@@ -4,8 +4,10 @@
 #include <boost/random/gamma_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
+#include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
@@ -226,10 +228,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_shape, T_inv_scale> 
         operands_and_partials(y, alpha, beta);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
           
@@ -353,10 +351,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_shape, T_inv_scale> 
         operands_and_partials(y, alpha, beta);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
           
@@ -470,10 +464,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_shape, T_inv_scale> 
         operands_and_partials(y, alpha, beta);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
           
@@ -545,13 +535,28 @@ namespace stan {
               RNG& rng) {
       using boost::variate_generator;
       using boost::gamma_distribution;
+
+      static const char* function = "stan::prob::gamma_rng(%1%)";
+
+      using stan::math::check_finite;
+      using stan::math::check_positive;
+      
+      if (!check_finite(function, alpha, "Shape parameter")) 
+        return 0;
+      if (!check_positive(function, alpha, "Shape parameter")) 
+        return 0;
+      if (!check_finite(function, beta, "Inverse scale parameter"))
+        return 0;
+      if (!check_positive(function, beta, "Inverse scale parameter"))
+        return 0;
+
       /*
         the boost gamma distribution is defined by
 	shape and scale, whereas the stan one is defined
 	by shape and rate
       */
       variate_generator<RNG&, gamma_distribution<> >
-        gamma_rng(rng, gamma_distribution<>(alpha, 1/beta));
+        gamma_rng(rng, gamma_distribution<>(alpha, 1.0 / beta));
       return gamma_rng();
     }
 

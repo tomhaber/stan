@@ -6,6 +6,8 @@
 #include <iostream>
 #include <vector>
 
+#include <stan/math/matrix/Eigen.hpp>
+#include <stan/agrad/rev/matrix/grad.hpp>
 #include <stan/agrad/rev/var.hpp>
 
 namespace stan {
@@ -28,9 +30,9 @@ namespace stan {
      * Jacobian determinant of inverse parameter transforms is added to 
      * the log probability.
      * @tparam M Class of model.
-     * @param model[in] Model.
-     * @param params_r[in] Real-valued parameters.
-     * @param params_i[in] Integer-valued parameters.
+     * @param[in] model Model.
+     * @param[in] params_r Real-valued parameters.
+     * @param[in] params_i Integer-valued parameters.
      * @param[in,out] msgs
      */
     template <bool jacobian_adjust_transform, class M>
@@ -69,9 +71,9 @@ namespace stan {
      * Jacobian determinant of inverse parameter transforms is added to 
      * the log probability.
      * @tparam M Class of model.
-     * @param model[in] Model.
-     * @param params_r[in] Real-valued parameters.
-     * @param params_i[in] Integer-valued parameters.
+     * @param[in] model Model.
+     * @param[in] params_r Real-valued parameters.
+     * @param[in] params_i Integer-valued parameters.
      * @param[out] gradient Vector into which gradient is written.
      * @param[in,out] msgs
      */
@@ -102,6 +104,91 @@ namespace stan {
         throw;
       }
     }
+    
+    /**
+     * Helper function to calculate log probability for
+     * <code>double</code> scalars up to a proportion.
+     *
+     * This implementation wraps the <code>double</code> values in
+     * <code>stan::agrad::var</code> and calls the model's
+     * <code>log_prob()</code> function with <code>propto=true</code>
+     * and the specified parameter for applying the Jacobian
+     * adjustment for transformed parameters.
+     *
+     * @tparam propto True if calculation is up to proportion
+     * (double-only terms dropped).
+     * @tparam jacobian_adjust_transform True if the log absolute
+     * Jacobian determinant of inverse parameter transforms is added to
+     * the log probability.
+     * @tparam M Class of model.
+     * @param[in] model Model.
+     * @param[in] params_r Real-valued parameters.
+     * @param[in,out] msgs
+     */
+    template <bool jacobian_adjust_transform, class M>
+    double log_prob_propto(const M& model,
+                           Eigen::VectorXd& params_r,
+                           std::ostream* msgs = 0) {
+      using stan::agrad::var;
+      using std::vector;
+      vector<var> ad_params_r;
+      for (size_t i = 0; i < model.num_params_r(); ++i)
+        ad_params_r.push_back(params_r(i));
+      try {
+        double lp
+        = model
+          .template log_prob<true,
+                             jacobian_adjust_transform>(ad_params_r, msgs)
+            .val();
+        stan::agrad::recover_memory();
+        return lp;
+      } catch (std::exception &ex) {
+        stan::agrad::recover_memory();
+        throw;
+      }
+    }
+    
+    /**
+     * Compute the gradient using reverse-mode automatic
+     * differentiation, writing the result into the specified
+     * gradient, using the specified perturbation.
+     *
+     * @tparam propto True if calculation is up to proportion
+     * (double-only terms dropped).
+     * @tparam jacobian_adjust_transform True if the log absolute
+     * Jacobian determinant of inverse parameter transforms is added to
+     * the log probability.
+     * @tparam M Class of model.
+     * @param[in] model Model.
+     * @param[in] params_r Real-valued parameters.
+     * @param[out] gradient Vector into which gradient is written.
+     * @param[in,out] msgs
+     */
+    template <bool propto, bool jacobian_adjust_transform, class M>
+    double log_prob_grad(const M& model,
+                         Eigen::VectorXd& params_r,
+                         Eigen::VectorXd& gradient,
+                         std::ostream* msgs = 0) {
+      using std::vector;
+      using stan::agrad::var;
+      Eigen::Matrix<var,Eigen::Dynamic,1> ad_params_r(params_r.size());
+      for (size_t i = 0; i < model.num_params_r(); ++i) {
+        stan::agrad::var var_i(params_r[i]);
+        ad_params_r[i] = var_i;
+      }
+      try {
+        var adLogProb
+          = model
+            .template log_prob<propto,
+                               jacobian_adjust_transform>(ad_params_r, msgs);
+        double val = adLogProb.val();
+        stan::agrad::grad(adLogProb, ad_params_r, gradient);
+        return val;
+      } catch (std::exception &ex) {
+        stan::agrad::recover_memory();
+        throw;
+      }
+    }
 
     /**
      * Compute the gradient using finite differences for
@@ -119,7 +206,7 @@ namespace stan {
      * @param params_i Integer-valued parameters.
      * @param[out] grad Vector into which gradient is written.
      * @param epsilon
-     * @param[in,out] output_stream
+     * @param[in,out] msgs
      */
     template <bool propto, bool jacobian_adjust_transform, class M>
     void finite_diff_grad(const M& model,
@@ -129,10 +216,6 @@ namespace stan {
                           double epsilon = 1e-6,
                           std::ostream* msgs = 0) {
       std::vector<double> perturbed(params_r);
-      stan::model::log_prob_grad<propto,
-                                 jacobian_adjust_transform>(model, params_r,
-                                                            params_i,
-                                                            grad, msgs);
       grad.resize(params_r.size());
       for (size_t k = 0; k < params_r.size(); k++) {
         perturbed[k] += epsilon;
@@ -169,11 +252,10 @@ namespace stan {
      * @param model Model.
      * @param params_r Real-valued parameter vector.
      * @param params_i Integer-valued parameter vector.
-     * @param epsilon Real-valued scalar saying how much to perturb 
-     * @param error Real-valued scalar saying how much error to allow
-     * @param o Output stream for messages.
-     * params_r. Defaults to 1e-6.
-     * @param output_stream Stream to which Stan programs write.
+     * @param epsilon Real-valued scalar saying how much to perturb. Defaults to 1e-6.
+     * @param error Real-valued scalar saying how much error to allow. Defaults to 1e-6.
+     * @param o Output stream for messages. Defaults to std::cout.
+     * @param msgs Stream to which Stan programs write. Defaults to 0.
      * @return number of failed gradient comparisons versus allowed
      * error, so 0 if all gradients pass
      */
@@ -194,8 +276,8 @@ namespace stan {
                                                                 grad,msgs);
       
       std::vector<double> grad_fd;
-      finite_diff_grad<propto,
-                       jacobian_adjust_transform,
+      finite_diff_grad<false,
+                       true,
                        M>(model,
                           params_r, params_i,
                           grad_fd, epsilon,
@@ -247,7 +329,7 @@ namespace stan {
      * @param hessian Vector to write gradient to. hessian[i*D + j]
      * gives the element at the ith row and jth column of the Hessian
      * (where D=params_r.size()).
-     * @param output_stream Stream to which print statements in Stan
+     * @param msgs Stream to which print statements in Stan
      * programs are written, default is 0
      */
     template <bool propto, bool jacobian_adjust_transform, class M>

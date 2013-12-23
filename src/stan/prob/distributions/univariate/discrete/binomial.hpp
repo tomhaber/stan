@@ -4,10 +4,13 @@
 #include <boost/random/binomial_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
+#include <stan/math/functions/inv_logit.hpp>
 #include <stan/math/functions/log1m.hpp>
 #include <stan/math/functions/log_inv_logit.hpp>
+#include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/traits.hpp>
@@ -106,14 +109,18 @@ namespace stan {
           temp1 += n_vec[i];
           temp2 += N_vec[i] - n_vec[i];
         }
-        operands_and_partials.d_x1[0] 
-          += temp1 / value_of(theta_vec[0])
-          - temp2 / (1.0 - value_of(theta_vec[0]));
+        if (!is_constant_struct<T_prob>::value) {
+          operands_and_partials.d_x1[0] 
+            += temp1 / value_of(theta_vec[0])
+            - temp2 / (1.0 - value_of(theta_vec[0]));
+        }
       } else {
-        for (size_t i = 0; i < size; ++i)
-          operands_and_partials.d_x1[i] 
-            += n_vec[i] / value_of(theta_vec[i])
-            - (N_vec[i] - n_vec[i]) / (1.0 - value_of(theta_vec[i]));
+        if (!is_constant_struct<T_prob>::value) {
+          for (size_t i = 0; i < size; ++i)
+            operands_and_partials.d_x1[i] 
+              += n_vec[i] / value_of(theta_vec[i])
+              - (N_vec[i] - n_vec[i]) / (1.0 - value_of(theta_vec[i]));
+        }
       }
 
       return operands_and_partials.to_var(logp);
@@ -216,14 +223,18 @@ namespace stan {
           temp1 += n_vec[i];
           temp2 += N_vec[i] - n_vec[i];
         }
-        operands_and_partials.d_x1[0] 
-          += temp1 * inv_logit(-value_of(alpha_vec[0]))
-          - temp2 * inv_logit(value_of(alpha_vec[0]));
+        if (!is_constant_struct<T_prob>::value) {
+          operands_and_partials.d_x1[0] 
+            += temp1 * inv_logit(-value_of(alpha_vec[0]))
+            - temp2 * inv_logit(value_of(alpha_vec[0]));
+        }
       } else {
-        for (size_t i = 0; i < size; ++i)
-          operands_and_partials.d_x1[i] 
-            += n_vec[i] * inv_logit(-value_of(alpha_vec[i]))
-            - (N_vec[i] - n_vec[i]) * inv_logit(value_of(alpha_vec[i]));
+        if (!is_constant_struct<T_prob>::value) {
+          for (size_t i = 0; i < size; ++i)
+            operands_and_partials.d_x1[i] 
+              += n_vec[i] * inv_logit(-value_of(alpha_vec[i]))
+              - (N_vec[i] - n_vec[i]) * inv_logit(value_of(alpha_vec[i]));
+        }
       }
 
       return operands_and_partials.to_var(logp);
@@ -289,10 +300,6 @@ namespace stan {
       using boost::math::ibeta_derivative;
           
       agrad::OperandsAndPartials<T_prob> operands_and_partials(theta);
-          
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
           
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -377,10 +384,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_prob> operands_and_partials(theta);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as negative infinity
       for (size_t i = 0; i < stan::length(n); i++) {
@@ -454,10 +457,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_prob> operands_and_partials(theta);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as negative infinity
       for (size_t i = 0; i < stan::length(n); i++) {
@@ -494,6 +493,27 @@ namespace stan {
                  RNG& rng) {
       using boost::variate_generator;
       using boost::binomial_distribution;
+
+      static const char* function = "stan::prob::binomial_rng(%1%)";
+      
+      using stan::math::check_finite;
+      using stan::math::check_less_or_equal;
+      using stan::math::check_greater_or_equal;
+      using stan::math::check_nonnegative;
+
+      if (!check_nonnegative(function, N,
+                             "Population size parameter"))
+        return 0;
+      if (!check_finite(function, theta,
+                        "Probability parameter"))
+        return 0;
+      if (!check_less_or_equal(function, theta, 1.0,
+                         "Probability parameter"))
+        return 0;
+      if (!check_greater_or_equal(function, theta, 0.0,
+                         "Probability parameter"))
+        return 0;
+
       variate_generator<RNG&, binomial_distribution<> >
         binomial_rng(rng, binomial_distribution<>(N, theta));
       return binomial_rng();

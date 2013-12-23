@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <test/agrad/util.hpp>
-#include <stan/agrad/agrad.hpp>
-#include <stan/agrad/matrix.hpp>
+#include <stan/agrad/rev.hpp>
+#include <stan/agrad/rev/matrix.hpp>
 #include <stan/math/matrix/log_softmax.hpp>
 #include <stan/agrad/rev/matrix/log_softmax.hpp>
 
@@ -52,7 +52,7 @@ log_softmax_grad(Eigen::Matrix<double,Eigen::Dynamic,1>& alpha_dbl,
     alpha(i) = alpha_dbl(i);
 
   std::vector<var> x(alpha.size());
-  for (int i = 0; i < x.size(); ++i)
+  for (size_t i = 0; i < x.size(); ++i)
     x[i] = alpha(i);
   
   // var fx_k = stan::math::log_softmax(alpha)[k];

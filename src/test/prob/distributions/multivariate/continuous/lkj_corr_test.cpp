@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "stan/prob/distributions/multivariate/continuous/lkj_corr.hpp"
 #include <boost/random/mersenne_twister.hpp>
-#include<boost/math/distributions.hpp>
+#include <boost/math/distributions.hpp>
 
 TEST(ProbDistributionsLkjCorr,testIdentity) {
   unsigned int K = 4;
@@ -47,10 +47,13 @@ TEST(ProbDistributionsLkjCorr,Sigma) {
   EXPECT_THROW (stan::prob::lkj_corr_log(Sigma, eta), std::domain_error);
 }
 
-TEST(ProbDistributionsLKJCorr, random) {
+TEST(ProbDistributionsLKJCorr, error_check) {
   boost::random::mt19937 rng;
   EXPECT_NO_THROW(stan::prob::lkj_corr_cholesky_rng(5, 1.0,rng));
   EXPECT_NO_THROW(stan::prob::lkj_corr_rng(5, 1.0,rng));
+
+  EXPECT_THROW(stan::prob::lkj_corr_cholesky_rng(5, -1.0,rng),std::domain_error);
+  EXPECT_THROW(stan::prob::lkj_corr_rng(5, -1.0,rng),std::domain_error);
 }
 
 TEST(ProbDistributionsLKJCorr, chiSquareGoodnessFitTest) {

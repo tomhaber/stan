@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <stan/prob/distributions/multivariate/discrete/categorical.hpp>
 #include <boost/random/mersenne_twister.hpp>
-#include<boost/math/distributions.hpp>
+#include <boost/math/distributions.hpp>
 
 using Eigen::Dynamic;
 using Eigen::Matrix;
@@ -81,8 +81,20 @@ TEST(ProbDistributionsCategorical,DefaultPolicy) {
   
 }
 
-TEST(ProbDistributionCategorical, chiSquareGoodnessFitTest) {
+TEST(ProbDistributionsCategorical, error_check) {
   boost::random::mt19937 rng;
+  
+  Matrix<double,Dynamic,Dynamic> theta(3,1);
+  theta << 0.15, 
+    0.45,
+    0.50;
+
+  EXPECT_THROW(stan::prob::categorical_rng(theta,rng),std::domain_error);
+}
+
+TEST(ProbDistributionsCategorical, chiSquareGoodnessFitTest) {
+  boost::random::mt19937 rng;
+
   int N = 10000;
   Matrix<double,Dynamic,Dynamic> theta(3,1);
   theta << 0.15, 

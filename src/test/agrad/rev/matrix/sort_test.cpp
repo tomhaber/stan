@@ -1,7 +1,7 @@
 #include <stan/agrad/rev/matrix/sort.hpp>
 #include <test/agrad/util.hpp>
 #include <gtest/gtest.h>
-#include <stan/agrad/agrad.hpp>
+#include <stan/agrad/rev.hpp>
 #include <stan/math/matrix/sort.hpp>
 
 void test_sort_asc(VEC val) {
@@ -153,7 +153,7 @@ TEST(AgradRev, sort) {
 
 TEST(AgradRev, sort_no_thrown) {
   AVEC vec0;
-  EXPECT_EQ(0, vec0.size());
+  EXPECT_EQ(0U, vec0.size());
   EXPECT_NO_THROW(sort_asc(vec0));
   EXPECT_NO_THROW(sort_desc(vec0));
   

@@ -4,8 +4,9 @@
 #include <boost/random/student_t_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
 #include <stan/math/functions/square.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
@@ -269,11 +270,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_dof, T_loc, T_scale> 
         operands_and_partials(y, nu, mu, sigma);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 
-                0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
       for (size_t i = 0; i < stan::length(y); i++) {
@@ -456,11 +452,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_dof, T_loc, T_scale> 
         operands_and_partials(y, nu, mu, sigma);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 
-                0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
       for (size_t i = 0; i < stan::length(y); i++) {
@@ -631,11 +622,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_dof, T_loc, T_scale> 
         operands_and_partials(y, nu, mu, sigma);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 
-                0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
       for (size_t i = 0; i < stan::length(y); i++) {
@@ -771,6 +757,23 @@ namespace stan {
                   RNG& rng) {
       using boost::variate_generator;
       using boost::random::student_t_distribution;
+
+      static const char* function = "stan::prob::student_t_rng(%1%)";
+
+      using stan::math::check_positive;
+      using stan::math::check_finite;
+
+      if(!check_finite(function, nu, "Degrees of freedom parameter"))
+        return 0;
+      if(!check_positive(function, nu, "Degrees of freedom parameter")) 
+        return 0;
+      if (!check_finite(function, mu, "Location parameter")) 
+        return 0;
+      if (!check_finite(function, sigma, "Scale parameter")) 
+        return 0;
+      if (!check_positive(function, sigma, "Scale parameter"))
+        return 0;
+
       variate_generator<RNG&, student_t_distribution<> >
         rng_unit_student_t(rng, student_t_distribution<>(nu));
       return mu + sigma * rng_unit_student_t();

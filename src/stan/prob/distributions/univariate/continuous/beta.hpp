@@ -5,9 +5,10 @@
 #include <boost/random/gamma_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
 #include <stan/math/functions/log1m.hpp>
+#include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
@@ -270,10 +271,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_scale_succ, T_scale_fail> 
         operands_and_partials(y, alpha, beta);
 
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
       for (size_t i = 0; i < stan::length(y); i++) {
@@ -430,10 +427,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_scale_succ, T_scale_fail> 
         operands_and_partials(y, alpha, beta);
 
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-      
       // Compute CDF and its gradients
       using boost::math::ibeta;
       using boost::math::ibeta_derivative;
@@ -563,10 +556,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_scale_succ, T_scale_fail> 
         operands_and_partials(y, alpha, beta);
 
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials
-                + operands_and_partials.nvaris, 0.0);
-      
       // Compute CDF and its gradients
       using boost::math::ibeta;
       using boost::math::ibeta_derivative;
@@ -648,6 +637,24 @@ namespace stan {
              RNG& rng) {
       using boost::variate_generator;
       using boost::random::gamma_distribution;
+      // Error checks
+      static const char* function = "stan::prob::beta_rng(%1%)";
+
+      using stan::math::check_positive;
+      using stan::math::check_finite;
+      using stan::math::check_not_nan;
+      using stan::math::check_nonnegative;
+      using stan::math::check_less_or_equal;
+        
+      if (!check_finite(function, alpha, "First shape parameter"))
+        return 0;
+      if (!check_positive(function, alpha, "First shape parameter"))
+        return 0;
+      if (!check_finite(function, beta, "Second shape parameter"))
+        return 0;
+      if (!check_positive(function, beta, "Second shape parameter"))
+        return 0;
+
       variate_generator<RNG&, gamma_distribution<> >
         rng_gamma_alpha(rng, gamma_distribution<>(alpha, 1.0));
       variate_generator<RNG&, gamma_distribution<> >

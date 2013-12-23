@@ -4,12 +4,15 @@
 #include <boost/random/chi_squared_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
+#include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
 #include <stan/prob/traits.hpp>
+#include <stan/prob/internal_math.hpp>
 
 namespace stan {
 
@@ -147,8 +150,8 @@ namespace stan {
      * Calculates the chi square cumulative distribution function for the given
      * variate and degrees of freedom.
      * 
-     * @param y A scalar variate.
-     * @param nu Degrees of freedom.
+     * y A scalar variate.
+     * nu Degrees of freedom.
      * 
      * @return The cdf of the chi square distribution
      */
@@ -191,10 +194,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_y, T_dof> 
         operands_and_partials(y, nu);
-          
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
           
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -303,10 +302,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_dof> 
         operands_and_partials(y, nu);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
       for (size_t i = 0; i < stan::length(y); i++) {
@@ -407,10 +402,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_dof> 
         operands_and_partials(y, nu);
           
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-          
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
       for (size_t i = 0; i < stan::length(y); i++) {
@@ -477,6 +468,18 @@ namespace stan {
                    RNG& rng) {
       using boost::variate_generator;
       using boost::random::chi_squared_distribution;
+
+      static const char* function = "stan::prob::chi_square_rng(%1%)";
+
+      using stan::math::check_positive;
+      using stan::math::check_finite;
+      
+      if (!check_finite(function, nu, "Degrees of freedom parameter"))
+        return 0;
+      if (!check_positive(function, nu, "Degrees of freedom parameter"))
+        return 0;
+    
+
       variate_generator<RNG&, chi_squared_distribution<> >
         chi_square_rng(rng, chi_squared_distribution<>(nu));
       return chi_square_rng();
