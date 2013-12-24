@@ -187,7 +187,16 @@
 \section[Why Stan?]{Why \proglang{Stan}?}
 %% Note: If there is markup in \(sub)section, then it has to be escape as above.
 
-We did not set out to build \proglang{Stan} as it currently exists.
+We did not set out to build \proglang{Stan} as it currently exists.%
+%
+\footnote{\proglang{Stan}'s home page, \url{http://mc-stan.org/},
+  links to the Stan manual, example models including translations of
+  the BUGS examples and the models from \citep{GelmanHill:2007},
+  getting started instructions and full documentation for Stan's
+  interfaces for the command line (CmdStan), Python (PyStan), and
+  R (Rstan), and the source code repositories and issue trackers.}
+
+
 Our original goal was to apply full Bayesian inference to the sort of multilevel
 generalized linear models discussed in Part~II of
 \citep{GelmanHill:2007}, which are structured with grouped and
@@ -306,22 +315,24 @@ a combination of expression templates and metaprogramming.
 
 When we attempted to fit a time-series model, we found that
 normalizing the data to unit sample mean and variance sped up the fits
-by an order of magnitude.  In hindsight this isn't surprising, as the 
-performance of the numerical simulation in HMC scales with the variation 
-of the parameter scales; fortunately HMC also provides a choice of metric,
-or mass matrix, to compensate for variations in the log posterior.
-In \proglang{Stan} 1.0 we introduced an adaptive 
-diagonal metric into our HMC implementations that allowed the parameter 
-scales to be normalized automatically, with the option of an adaptive dense 
-metric and a full automated standardization of the posterior in \proglang{Stan} 2.0.
+by an order of magnitude.  In hindsight this isn't surprising, as the
+performance of the numerical simulation in HMC scales with the
+variation of the parameter scales; fortunately HMC also provides a
+choice of metric, or mass matrix, to compensate for variations in the
+log posterior.  In \proglang{Stan} 1.0 we introduced an adaptive
+diagonal metric into our HMC implementations that allowed the
+parameter scales to be normalized automatically, with the option of an
+adaptive dense metric and a full automated standardization of the
+posterior in \proglang{Stan} 2.0.
 
 Because the dense metric performs only a global standardization, the
 performance of \proglang{Stan} in models where the relative parameter
 scales varies by location, such as hierarchical and latent models, can
-suffer.  Riemannian manifold Hamiltonian Monte Carlo (RHMC)
-\citep{GirolamiCalderhead:2011} introduces a location-dependent metric
-that can overcome these final hurdles, and a full implementation
-within Stan is currently under development.
+suffer.  Riemannian manifold Hamiltonian Monte Carlo (RHMC) introduces
+a location-dependent metric that can overcome these final hurdles
+\citep{GirolamiCalderhead:2011}; Stan has a prototype implementation
+of RHMC based on the metric of \citep{Betancourt:2012}, using a
+generalization of NUTS to Riemann manifolds \citep{Betancourt:2013}.
 
 \section{Overview}
 
@@ -346,20 +357,33 @@ parameters {
   real<lower=0,upper=1> theta;
 } 
 model {
-  theta ~ beta(1,1);  // prior
-  for (n in 1:N) 
-    y[n] ~ bernoulli(theta);  // likelihood
+  theta ~ beta(1,1);     // prior
+  y ~ bernoulli(theta);  // likelihood
 }
 \end{Code}
 \caption{Model for estimating a Bernoulli parameter.}\label{bernoulli-model.fig}
 \end{figure}
 %
 The model treats the observed binary data, \code{y[1],...,y[N]}, as
-independent and identically distributed, with success probability \code{theta}.  
-A \code{beta(1,1)} (i.e., uniform) prior is placed on \code{theta} , although there is no
-special behavior for conjugate priors in \proglang{Stan}.  This model
-is available in the \proglang{Stan} source distribution in
+independent and identically distributed, with success probability
+\code{theta}.  The vectorized likelihood statement can also be coded
+using a loop as in BUGS, although it will run more slowly than the
+vectorized form:
+%
+\begin{Code}
+for (n in 1:N)
+  y[n] ~ bernoulli(theta);
+\end{Code}
+%
+A \code{beta(1,1)} (i.e., uniform) prior is placed on \code{theta},
+although there is no special behavior for conjugate priors in
+\proglang{Stan}.  The prior could be dropped from the model altogether
+because parameters start with uniform distributions on their support,
+here constrained to be between 0 and 1 in the parameter declaration
+for \code{theta}.  This model is available in the \proglang{Stan}
+source distribution in
 \code{src/models/basic\_estimators/bernoulli.stan}.
+
 
 
 \subsection{Data format}
@@ -664,7 +688,7 @@ The estimated potential scale reduction statistic $\hat{R}$
 is consistent with convergence.  \proglang{Stan} uses a more
 conservative version of $\hat{R}$ than is usual in packages such as
 \pkg{Coda} \citep{PlummerEtAl:2006}, first splitting each chain in half to diagnose
-montonically increasing or decreasing samples; \citep{GelmanEtAl:2013}
+nonstationary chains; \citep{GelmanEtAl:2013}
 and \citep{Stan:2013} provide detailed definitions.
 
 The estimated number of effective samples per parameter
@@ -1145,7 +1169,7 @@ distribution over simplexes and correlation matrices is proper, but
 the uniform distribution over ordered vectors or covariance matrices
 is not. 
 
-\subsection{The ``Matt trick'' for hierarchical models}
+\subsection{The non-centered parameterization for hierarchical models}
 
 Consider the following hierarchical logistic regression model fragment.
 %
@@ -1167,25 +1191,28 @@ model {
 }
 \end{Code}
 %
-With the direct parameterization, a change in \code{sigma} is
-amplified by the lower-level parameters and introduces a large
-change in density across the posterior.  Unfortunately the 
-expected density variation of an HMC transition is limited%
+With this parameterization, the \code{beta[k]} are centered around
+\code{mu}.  As a result, a change in \code{sigma} is amplified by the
+lower-level parameters and introduces a large change in density across
+the posterior.  Unfortunately the expected density variation of an HMC
+transition is limited%
 %
-\footnote{The limited density variation is a ultimately consequence
-of a constant metric.  An additional benefit of RMHMC are transitions
-that can cover much larger variations in density, making it uniquely
-suited to these models.}
+\footnote{The limited density variation is a ultimately consequence of
+  a constant metric.  An additional benefit of RHMC are transitions
+  that can cover much larger variations in density, making it uniquely
+  suited to these models; see \citep{Neal:2011}.}
 %
-and many transitions are required to explore the full posterior.
-The resulting sampler devolves into a random walk with high autocorrelations. 
+and many transitions are required to explore the full posterior.  The
+resulting sampler devolves into a random walk with high
+autocorrelations. 
 
-The following reparameterization employs the ``Matt trick'',
-%
-\footnote{The reparameterization is named after Matt Hoffman, who
-  introduced it during modeling discussions in the \proglang{Stan}
-  group meetings.  A similar reparameterization by \citep{Choo:2000}
-  is discussed in \citep[Section~5.4.5]{Neal:2011}.}
+\cite{BetancourtGirolami:2013} discuss for more
+analysis of centered vs.\ non-centered parameterizations of
+hierarchical models.
+
+The following reparameterization employs a non-centered
+parameterization (see \citep{BetancourtGirolami:2013} for an analysis
+of the benefits of non-centered parameterizations).
 %
 \begin{Code}
 parameters {
@@ -1395,7 +1422,12 @@ start-comment (\code{/*}) and end-comment (\code{*/}) markers being
 ignored. 
 
 The preferred style follows that of \proglang{C++}, with line comment
-used for everything but multiline comments.
+used for everything but multiline comments.  
+
+Stan follows the \proglang{C++} convention of separating words in
+variable names using underbars (\code{\_}), rather than dots
+(\code{.}), as used in \proglang{R} and \proglang{BUGS}, or camel case
+as used in Java.
 
 \subsection{Control structures}
 
@@ -1453,17 +1485,21 @@ functions and their inverses.  There are also many compound functions,
 such as \code{log1m(x)}, which is more stable arithmetically for
 values of x near 0 than \code{log(1 - x)}.  \proglang{Stan}'s special
 functions are listed in Figures~\ref{special-functions.fig} and
-\ref{special-functions-cont.fig}.
+\ref{special-functions-cont.fig}.  
+
+In addition to special functions, Stan includes distributions with
+alternative parameterizations, such as \code{bernoulli_logit}, which
+takes a parameter on the log odds (i.e., logit) scale.  This allows a
+more concise notation for generalized linear models as well as more
+efficient and arithmetically stable execution.  
 
 
 \subsection{Matrix and linear algebra functions}
 
 Following the usual convention in mathematics, matrix and array
 indexing uses the usual square brackets (\code{[ ]}) operator, and
-begins from 1.  \proglang{R}, \proglang{MATLAB}, and \proglang{BUGS},
-but not of \proglang{C++}, \proglang{Python}, or \proglang{Java}.
-If \code{Sigma} is a matrix, then \code{Sigma[n]} is the \code{n}-th
-row of \code{Sigma}.
+begins indexing from 1.  If \code{Sigma} is a matrix, then
+\code{Sigma[n]} is the \code{n}-th row of \code{Sigma}.
 
 Various reductions are provided for arrays and matrices, such as sums,
 means, standard deviations and norms.  Replications are also available
@@ -1527,12 +1563,14 @@ The list of probability functions is provided in Figures
 
 All probability functions support calculating results up to a constant
 proportion, which becomes an additive constant on the log scale.
-Constancy here refers to being a numeric literal such as \code{1}, a
-constant function such as \code{pi()}, a variable declared as data or
-transformed data, or an expression involving only other constants.
+Constancy here refers to being a numeric literal such as \code{1} or
+\code{0.5}, a constant function such as \code{pi()}, data and
+transformed data variables, or a function that only depends on
+literals, constant functions or data variables.
+
 Non-constants include parameters, transformed parameters, local
 variables declared in the transformed parameters or model statements,
-as well as any expression involving a non-constant. 
+as well as any expression involving a non-constant.
 
 Constant terms are dropped from probability function calculations at
 the time the model is compiled, so there is no run-time overhead to
@@ -1545,11 +1583,11 @@ decide which expressions denote constants.%
   parameter on the log probability and derivative functions generated
   in \proglang{C++} for a model.}
 %
-For example, calling \code{normal\_log(y,0,1)}, where \code{y} is a
-parameter and \code{0} and \code{1} are constants, does not bother
-computing the $\log \sigma$ term in the log density because $\sigma=1$
-is a constant.  On the other hand, the $y - 0$ term is calculated and
-is not a constant because $y$ is not a constant.
+For example, executing \code{normal\_log(y,0,sigma)} only evaluates
+\code{log(sigma)} if \code{sigma} is a parameter, transformed
+parameter, or a local variable in the transformed parameters or model
+block; that is, \code{log(sigma)} is not evaluated if \code{sigma} is
+constant as defined above.  
 
 \subsubsection{Vectorization}
 
@@ -1638,6 +1676,13 @@ chains to be run as the number of dimensions in order to have full
 rank search of the posterior.
 
 \subsection{Optimizers}
+
+In addition to performing full Bayesian inference via posterior
+sampling, Stan also can perform optimization (i.e., computation of the
+posterior mode).  We are currently working on implementing other
+optimization-based inference approaches including variational Bayes,
+expectation propagation, and and marginal inference using approximate
+integration.  All these algorithms require optimization steps.
 
 \subsubsection{BFGS}
 
@@ -2239,4 +2284,5 @@ lower-triangular by transpose \\
 
 
 \end{document}
+
 
