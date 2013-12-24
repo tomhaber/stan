@@ -63,41 +63,58 @@
 \Abstract{ \proglang{Stan} is a probabilistic programming language for
   specifying statistical models. A \proglang{Stan} program
   imperatively defines a log probability function over parameters
-  conditioned on specified data and constants.  This may be contrasted
-  with the \proglang{BUGS} language, in which a program declaratively
-  defines a directed acyclic graphical model.
-
-  Variables are declared by dimensionality and as to whether they
-  represent data, transformed data, parameters, transformed
-  parameters, or generated quantities; local variables are also
-  supported.  In addition to unconstrained and constrained scalar,
-  discrete, vector, matrix, and array types, there is a library of
-  mathematical functions, probability-related functions, and matrix
-  and linear algebra functions.  Statements, such as assignment,
-  sampling, conditionals, and loops are executed imperatively in the
-  order they are written.
+  conditioned on specified data and constants.  
 
   Full Bayesian inference is supported through Markov chain Monte
-  Carlo (MCMC) methods such as the No-U-Turn sampler (NUTS).  
-  Penalized maximum likelihood estimates
-  are calculated using optimization methods such as BFGS.
-  
-  \proglang{Stan} programs are translated to \proglang{C++} and
-  compiled.  The target \proglang{C++} code includes forward- and
-  reverse-mode algorithmic differentiation to support samplers and
-  optimizers requiring gradients, Hessians, Hessian-vector products,
-  and other higher-order derivatives.  There is an extensive I/O
-  library to deal with constrained variable input for data,
-  initialization for parameters, and output for samples or point
-  estimates.  There are also a range of tools to monitor convergence
-  and mixing, summarize the posterior, perform Bayesian inference, and
-  carry out posterior predictive checks.
+  Carlo (MCMC) methods such as the No-U-Turn sampler (NUTS), an
+  adaptive form of Hamiltonian Monte Carlo (HMC) sampling.  Penalized
+  maximum likelihood estimates are calculated using optimization
+  methods such as BFGS.
 
-  \proglang{Stan} can be called from the command line, through
-  \proglang{R} using the \pkg{RStan} package, or through
-  \proglang{Python} using the \pkg{PyStan} package.  All three
-  interfaces support sampling or optimization-based inference and
-  analysis.}
+  % This may be contrasted
+  % with the \proglang{BUGS} language, in which a program
+  % declaratively
+  % defines a directed acyclic graphical model.
+
+  % Variables are declared by dimensionality and as to whether they
+  % represent data, transformed data, parameters, transformed
+  % parameters, or generated quantities; local variables are also
+  % supported.  In addition to unconstrained and constrained scalar,
+  % discrete, vector, matrix, and array types, there is a library of
+  % mathematical functions, probability-related functions, and matrix
+  % and linear algebra functions.  Statements, such as assignment,
+  % sampling, conditionals, and loops are executed imperatively in the
+  % order they are written.
+
+  % \proglang{Stan} programs are translated to \proglang{C++} and
+  % compiled.  The target \proglang{C++} code includes forward- and
+  % reverse-mode algorithmic differentiation to support samplers and
+  % optimizers requiring gradients, Hessians, Hessian-vector products,
+  % and other higher-order derivatives.
+
+  % There is an extensive I/O
+  % library to deal with constrained variable input for data,
+  % initialization for parameters, and output for samples or point
+  % estimates.  There are also a range of tools to monitor convergence
+  % and mixing, summarize the posterior, perform Bayesian inference,
+  % and
+  % carry out posterior predictive checks.
+
+  Stan can be viewed as a package for performing full Bayesian
+  inference for continuous-variable models, and as a platform for
+  computing log-densities and their gradients and Hessians, which can
+  be used in alternative algorithms such as variational Bayes,
+  expectation propagation, and marginal inference using approximate
+  integration.  To this end, Stan is set up so that the densities,
+  gradients, and Hessians, along with intermediate quantities of the
+  algorithm such as acceptance probabilities, are easily accessible.
+
+  % \proglang{Stan} can be called from the command line, through
+  % \proglang{R} using the \pkg{RStan} package, or through
+  % \proglang{Python} using the \pkg{PyStan} package.  All three
+  % interfaces support sampling or optimization-based inference and
+  % analysis.
+}
 
 \Keywords{
   probabilistic program,
@@ -300,10 +317,11 @@ metric and a full automated standardization of the posterior in \proglang{Stan} 
 
 Because the dense metric performs only a global standardization, the
 performance of \proglang{Stan} in models where the relative parameter
-scales varies by location, such as hierarchical and latent models, can suffer.
-RMHMC (Riemannian Manifold HMC) \citep{GirolamiCalderhead:2011}
-introduces a location-dependent metric that can overcome these final
-hurdles, and a full implementation within Stan is currently under development.
+scales varies by location, such as hierarchical and latent models, can
+suffer.  Riemannian manifold Hamiltonian Monte Carlo (RHMC)
+\citep{GirolamiCalderhead:2011} introduces a location-dependent metric
+that can overcome these final hurdles, and a full implementation
+within Stan is currently under development.
 
 \section{Overview}
 
