@@ -153,7 +153,7 @@
   \\
   U.S.A.
   \\
-  E-mail: \email{carp@stat.columbia.edu}
+  E-mail: \email{carp@alias-i.com}
   \\ 
   URL: \url{http://mc-stan.org/}
 }
@@ -169,17 +169,6 @@
 
 
 \begin{document}
-
-\section{TO-DO}
-
-\begin{enumerate}
-\item Convergence diagnostics?
-\item more model examples?
-\item description from C++ perspective?
-\item what else do we want to make sure users don't miss?
-\item optimization example?
-\item future plans section?
-\end{enumerate}
 
 %% include your article here, just as usual
 %% Note that you should use the \pkg{}, \proglang{} and \code{} commands.
@@ -1565,10 +1554,10 @@ explicit the modeling decisions and expression types.
 \subsection{Primitive Types}
 
 The primitive types of \proglang{Stan} are \code{real} and \code{int},
-which are used to represent continuous and integral values.  These
-values are represented directly in \proglang{C++}.  Integer
-expressions can be used anywhere a real value is required, but not
-{\it vice-versa}.
+which are used to represent continuous and integer values.  These
+values are represented directly in \proglang{C++} as types
+\code{double} and \code{int}.  Integer expressions can be used
+anywhere a real value is required, but not {\it vice-versa}.  
 
 \subsection{Vector and Matrix Types}
 
@@ -1593,8 +1582,15 @@ Higher-dimensional arrays are intrinsically arrays of arrays.  An
 entry two-dimensional array \code{y} may be accessed as \code{y[1,2]}
 or \code{y[1][2]}, with the expression \code{y[1]} denoting an array.%
 %
-\footnote{ Arrays are stored in row-major order and matrices in
+\footnote{Arrays are stored in row-major order and matrices in
   column-major order.}
+
+Unlike integers, which may be used where real values are required,
+arrays of integers may not be used where real arrays are required.%
+%
+\footnote{In the language of type theory, \proglang{Stan} arrays are
+  not covariant.  This follows the behavior of both arrays and
+  standard library containers in \proglang{C++}.}
 
 \subsection{Constrained Variable Types}
 
@@ -1654,9 +1650,7 @@ the same operator maps a \code{row\_vector} and a \code{vector} to a
 If necessary, an integer type will be promoted to a \code{real} value.
 For example, multiplying an \code{int} by a \code{real} produces a
 \code{real} result by promoting the \code{int} argument to a
-\code{real}.  \proglang{Stan} also attempts to treat arrays as
-covariant, meaning that arrays of of \code{int} values can often be
-used where arrays of \code{real} values are specified.
+\code{real}.  
 
 \section{Statements}
 
@@ -1670,7 +1664,7 @@ define a log probability function.
 
 \subsubsection{Log probability accumulator}
 
-There is an implicitly defined variable \code{lp\_\_} (available in
+There is an implicitly defined variable \code{lp\_\_} (available in 
 the transformed parameters and model blocks) denoting the log
 probability that will be returned by the log probability function.  A
 sampling statement is nothing more than shorthand for incrementing the
@@ -1684,15 +1678,19 @@ beta ~ normal(0,1);
 has the exact same effect as the assignment statement
 %
 \begin{Code}
-lp__ <- lp__ + normal_log(beta,0,1);
+increment_log_prob(normal_log(beta,0,1));
 \end{Code}
+%
+The sampling statement distribution \code{normal} is shorthand for the
+function \code{normal\_log}, and both the left-hand side variate and
+right-hand side parameters become arguments.
 
 Because computation is only up to a proportion, this sampling
 statement in turn has the same effect as the direct implementation in
 terms of basic arithmetic,
 %
 \begin{Code}
-lp__ <- lp__ - 0.5 * beta * beta;
+increment_log_prob(-0.5 * beta * beta);
 \end{Code}
 %
 If \code{beta} is of type \code{vector}, replace \code{beta * beta}
@@ -1725,7 +1723,7 @@ in any block after the block in which they are declared.
 Following the convention of \proglang{C++}, statements are separated
 with semicolons in \proglang{Stan} so that the content of whitespace
 (outside of comments) is irrelevant.  This is in contrast to
-\proglang{BUGS} and \proglang{JAGS} in which carriage returns are
+\proglang{BUGS} and \proglang{R}, in which carriage returns are
 special and may indicate the end of a statement.
 
 \proglang{Stan} supports the line comment style of \proglang{C++},
@@ -1815,8 +1813,11 @@ efficient and arithmetically stable execution.
 
 Following the usual convention in mathematics, matrix and array
 indexing uses the usual square brackets (\code{[ ]}) operator, and
-begins indexing from 1.  If \code{Sigma} is a matrix, then
-\code{Sigma[n]} is the \code{n}-th row of \code{Sigma}.
+begins indexing from 1.  For example, if \code{Sigma} is a matrix,
+then \code{Sigma[m,n]} is the entry at row \code{m} and column
+\code{n}.  \proglang{Stan} also allows slices of data structures to be
+returned, so that \code{Sigma[m]} is row \code{m} of the matrix
+\code{Sigma}.  
 
 Various reductions are provided for arrays and matrices, such as sums,
 means, standard deviations and norms.  Replications are also available
@@ -1921,7 +1922,7 @@ basic signature of the probability function
 \code{normal\_log(y,mu,sigma)} involves real \code{y}, \code{mu} and
 \code{sigma}, it supports calls in which any any or all of \code{y},
 \code{mu} and \code{sigma} contain more than one element. A typical
-use case would be for linear regression, such as \code{normal\_log(y,X
+use case would be for linear regression, such as \code{y ~ normal(X
   * beta,sigma)}, where \code{y} is a vector of observed data,
 \code{X} is a predictor matrix, \code{beta} is a coefficient vector,
 and \code{sigma} is a real value for the noise scale.
@@ -1932,7 +1933,7 @@ vectorized versions are much faster.  They reduce the number of times
 expensive operations need to be evaluated and also reduce the number
 of virtual function calls required in the compiled \proglang{C++}
 executable for calculating gradients and higher-order derivatives.
-In the example above, \code{normal\_log(y,X *
+In the example above, \code{y ~ normal(X *
   beta,sigma)}, the logarithm of \code{sigma} need only be computed
 once; if \code{y} is an $N$-vector, it also reduces the number of
 virtual function calls from $N$ to 1.
@@ -1950,37 +1951,40 @@ information supplied by a model.
 \subsubsection{Hamiltonian Monte Carlo}
 
 The MCMC samplers provided include Euclidean Manifold Hamiltonian
-Monte Carlo (EM-HMC) \citep{DuaneEtAl:1987, Neal:1994, Neal:2011} and
-the No-U-Turn sampler (NUTS) \citep{HoffmanGelman:2011}.  Both
-versions of HMC allow estimation or specification of unit, diagonal,
-or full mass matrices.  NUTS, the default sampler for \proglang{Stan},
-automatically adapts the number of leapfrog steps, eliminating the
-need for user-specified tuning parameters.  Both algorithms take
-advantage of curvature information, namely the gradient, to generate
-coherent motion through the posterior that dramatically reduces the
-autocorrelation of the resulting transitions.
+Monte Carlo (EHMC, or just HMC) \citep{DuaneEtAl:1987, Neal:1994,
+  Neal:2011} and the No-U-Turn sampler (NUTS)
+\citep{HoffmanGelman:2011}.  Both versions of HMC allow estimation or
+specification of unit, diagonal, or full mass matrices.  NUTS, the
+default sampler for \proglang{Stan}, automatically adapts the number
+of leapfrog steps, eliminating the need for user-specified tuning
+parameters.  Both algorithms take advantage of gradient information in
+the log probability function to generate coherent motion through the
+posterior that dramatically reduces the autocorrelation of the
+resulting transitions.
 
-\proglang{Stan} will soon have an implementation of Riemannian Manifold
-Hamiltonian Monte Carlo (RM-HMC) \citep{GirolamiCalderhead:2011},
-using the SoftAbs metric to robustly incorporate posterior curvature
-into the Hamiltonian simulation \cite{Betancourt:2012}, although
-\proglang{Stan}'s MCMC framework makes it
-straightforward to incorporate other metrics.  This
-implementation will also generalize NUTS to Riemannian manifolds
+\proglang{Stan} will soon have an implementation of Riemannian
+Manifold Hamiltonian Monte Carlo (RHMC)
+\citep{GirolamiCalderhead:2011}, using the SoftAbs metric to robustly
+incorporate posterior curvature into the Hamiltonian simulation
+\cite{Betancourt:2012}.  \proglang{Stan}'s MCMC framework also makes
+it straightforward to incorporate other metrics.  This implementation
+will also generalize NUTS to Riemannian manifolds
 \citep{Betancourt:2013}.  Both support adapting step sizes during
-warmup.  RM-HMC uses first, second, and third order derivatives 
-to adapt to the local curvature of the posterior.
+warmup.  RHMC with SoftAbs uses first, second, and third order
+derivatives to adapt to the local curvature of the posterior.
 
 \subsubsection{Metropolis-Hastings}
 
-\proglang{Stan} supports random-walk Metropolis-Hastings samplers with
-multivariate normal proposals, the primary purpose of which is to
-provide baselines against which to measure more efficient approaches
-to sampling.  The covariance matrix used can be adapted during warmup,
-assuming either equal diagonal covariance, diagonal covariance, or a
-full covariance matrix.  Metropolis-Hastings does not require any
-derivatives of the log probability function, but the lack of gradient
-information induces random walk behavior.
+Random-walk Metropolis-Hastings samplers with multivariate normal
+proposals have been prototyped, but not yet integrated into the
+released versions of \proglang{Stan}.  The primary purpose of
+implementing Metropolis-Hastings is to provide baselines against which
+to measure more efficient approaches to sampling.  The covariance
+matrix used can be adapted during warmup, assuming either equal
+diagonal covariance, diagonal covariance, or a full covariance matrix.
+Metropolis-Hastings does not require any derivatives of the log
+probability function, but the lack of gradient information induces
+random walk behavior, leading to slow mixing.
 
 
 \subsubsection{Ensemble Samplers}
@@ -1990,7 +1994,9 @@ ensemble sampler \citep{GoodmanWeare:2010} and a differential
 evolution sampler \cite{TerBraak:2006}.  Ensemble samplers do not
 require derivative information, but typically require at least as many
 chains to be run as the number of dimensions in order to have full
-rank search of the posterior.
+rank search of the posterior.  They also require slightly different
+management of output due to a single sampler instance producing
+multiple correlated chains of draws.
 
 \subsection{Optimizers}
 
@@ -2006,10 +2012,10 @@ integration.  All these algorithms require optimization steps.
 The default optimizer in \proglang{Stan} is the
 Broyden-Fletcher-Goldfarb-Shannon-Boyd (BFGS) optimizer.  BFGS is a
 quasi-Newton optimizer that evaluates gradients directly, then uses
-the gradients to update an approximation to the Hessian; see
-\citep{NocedalWright:2006} for details.  Plans are in the works to
-also include the more involved, but more scalable limited-memory BFGS
-(L-BFGS) scheme.
+the gradients to update an approximation to the Hessian.  Plans are in
+the works to also include the more involved, but more scalable
+limited-memory BFGS (L-BFGS) scheme.  \citep{NocedalWright:2006} cover
+both BFGS and L-BFGS samplers.
 
 \subsubsection{Conjugate gradient}
 
@@ -2020,8 +2026,8 @@ conjugate gradient optimization requires gradient evaluations.
 \subsubsection{Accelerated gradient}
 
 Additionally, \proglang{Stan} implements a crude version of Nesterov's
-accelerated gradient optimizer \cite{Nesterov:1983} which combines
-gradient updates with a momentum-like update to speed up convergence.
+accelerated gradient optimizer \cite{Nesterov:1983}, which combines
+gradient updates with a momentum-like update to hasten convergence.
 
 \section{Random number generation}\label{rng.section}
 
@@ -2116,7 +2122,7 @@ itself is tested for stability.  \proglang{Stan} uses Jenkins
 
 \subsection{Testing framework}
 
-This includes extensive unit tests for low-level \proglang{C++} code.
+\proglang{Stan} includes extensive unit tests for low-level \proglang{C++} code.
 Unit tests are implemented using the \pkg{googletest} framework
 \citep{GoogleTest:2011}.  The probability functions and command-line
 invocations are complex enough that programs are used to automatically
