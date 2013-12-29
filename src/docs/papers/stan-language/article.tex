@@ -1,7 +1,7 @@
 \documentclass[article]{jss}
 
-\renewcommand{\textfraction}{0.07}
-\renewcommand{\topfraction}{0.9}	% max fraction of floats at top
+\renewcommand{\textfraction}{0.02}
+\renewcommand{\topfraction}{0.95}	% max fraction of floats at top
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% declarations for jss.cls %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -21,6 +21,10 @@
         {\bf\large Marcus A.\ Brubaker}
         \\ TTI-Chicago
         %
+        \\[9pt]
+        %
+        {\bf\large Allen Riddell}
+        \\ Dartmouth College
     \And
         %
         {\bf\large Andrew Gelman}
@@ -50,6 +54,8 @@
         %
         {\bf\large Peter Li}
         \\ Columbia University
+        %
+        \\[9pt]
 }
 \title{\proglang{Stan}: A Probabilistic Programming Language}
 
@@ -100,7 +106,7 @@
   % and
   % carry out posterior predictive checks.
 
-  \proglang{Stan} is also a platform for computing log-densities and
+  \proglang{Stan} is also a platform for computing log densities and
   their gradients and Hessians, which can be used in alternative
   algorithms such as variational Bayes, expectation propagation, and
   marginal inference using approximate integration.  To this end, Stan
@@ -195,7 +201,7 @@ item-response models, and varying output link functions and
 distributions.
 
 These models turned out to be a challenge for
-existing general-purpose inference software.  A direct encoding in
+existing general purpose inference software.  A direct encoding in
 \proglang{BUGS} \citep{LunnEtAl:2000,LunnEtAl:2009,LunnEtAl:2012} or
 \proglang{JAGS} \citep{Plummer:2003} can grind these tools to a halt.
 We began by adding custom vectorized logistic regressions to \proglang{JAGS}
@@ -219,17 +225,23 @@ posterior.  Although not difficult in theory for most functions,
 computing these gradients by hand on a model-by-model basis is very
 tedious and error prone.  That is when we discovered reverse-mode
 algorithmic differentiation, which, given a templated \proglang{C++}
-function for the log posterior, automatically computes a proper
-analytic gradient up to machine precision accuracy in only a few
-multiples of the cost to evaluate the log probability function itself.
+function for the log posterior, automatically computes its analytic
+gradient up to machine precision accuracy in only a few multiples of
+the time to evaluate the log probability function itself.%
+%
+\footnote{Hessian matrices (i.e., all second order derivatives) are
+  more expensive to calculate; each row corresponds to a parameter and
+  is filled by the gradient of the derivative of the log probability
+  function with respect to the parameter.}
+%
 We explored existing algorithmic differentiation packages with open
 licenses such as \pkg{RAD} \citep{Gay:2005} and its repackaging in the
 Sacado module of the \pkg{Trilinos} toolkit, and the \pkg{CppAD}
-package of the COIN-OR toolkit \citep{BellBurke:2008}.  Both
-packages, however, supported few special functions (e.g., probability
-functions, log gamma, inverse logit) or linear algebra operations
-(e.g., Cholesky decompositions, matrix division), and neither are
-easily or modularly extensible.
+package of the COIN-OR toolkit \citep{BellBurke:2008}.  Both packages,
+however, supported few special functions (e.g., probability functions,
+log gamma, inverse logit) or linear algebra operations (e.g., Cholesky
+decompositions, matrix division), and neither are easily or modularly
+extensible.
 
 Consequently we built our own reverse-mode algorithmic differentiation package.
 At that point, we ran into the problem that we could not just plug in
@@ -256,20 +268,20 @@ operations such as division and inverse, we implemented specialized
 derivatives using the rules described by \cite{Giles:2008}.
 
 At this point, we could fit models coded directly in \proglang{C++} on
-top of the pre-release versions of the \proglang{Stan} API
-(application programming interface).  Seeing how well this all worked,
-we set our sights on the generality and ease of use of \proglang{BUGS}
-and designed a modeling language in which statisticians could write
-their models in familiar notation that could be transformed to
-efficient \proglang{C++} code before being compiled into an efficient
-executable program.  Although we started with the target of specifying
-directed graphical models, our first implementation turned out to be a
-more general imperative form of specifying log probability functions;
+top of the pre-release versions of the \proglang{Stan} application
+programming interface (API).  Seeing how well this all worked, we set
+our sights on the generality and ease of use of \proglang{BUGS} and
+designed a modeling language in which statisticians could write their
+models in familiar notation that could be transformed to efficient
+\proglang{C++} code before being compiled into an efficient executable
+program.  Although we started with the target of specifying directed
+graphical models, our first implementation turned out to be a more
+general imperative form of specifying log probability functions;
 \proglang{BUGS} models could be translated line for line, but the
 \proglang{Stan} language also supports much richer imperative
-constructs like conditionals, while loops, and local variables.
-This paper is primarily about the \proglang{Stan} language and how
-it can be used to specify statistical models.
+constructs like conditionals, while loops, and local variables.  This
+paper is primarily about the \proglang{Stan} language and how it can
+be used to specify statistical models.
  
 The next problem we ran into when we started implementing richer
 models was variables with constrained support, such as positive variables, 
@@ -291,7 +303,8 @@ led to the development of the No U-Turn (NUTS) sampler
 possible samples by randomly simulating Hamiltonian dynamics both
 forwards and backwards in time until the combined trajectory turns
 back on itself.  Once the trajectory has terminated, a new sample is
-drawn from the tree.
+drawn from the tree.  In its original version, NUTS also estimates a
+step size during warmup based on a target acceptance probability. 
 
 We thought we were home free at this point, but when we measured the
 speed of some \proglang{BUGS} examples versus \proglang{Stan} we were
@@ -302,9 +315,7 @@ priors and lack of posterior correlations make it an ideal candidate
 for efficient Gibbs sampling.  Realizing that we were doing redundant
 calculations, we wrote a vectorized form of the normal distribution
 for multiple variates with the same mean and scale, which sped things
-up a bit. At the same time, we introduced some simple template
-metaprograms to remove the calculation of constant terms in the log
-probability.  Performance was lacking until we finally figured out how
+up a bit.  Performance was lacking until we finally figured out how
 to both eliminate redundant calculations and partially evaluate the
 gradients using a combination of expression templates and
 metaprogramming.
@@ -313,22 +324,23 @@ When we attempted to fit a time-series model, we found that
 normalizing the data to unit sample mean and variance sped up the fits
 by an order of magnitude.  In hindsight this isn't surprising, as the
 performance of the numerical simulation in HMC scales with the
-variation of the parameter scales; fortunately HMC also provides a
-choice of metric, in our case a Euclidean metric with a constant mass
-matrix, to compensate for variations in the log posterior.  In
-\proglang{Stan} 1.0 we introduced an adaptive diagonal metric into our
-HMC implementations that allowed the parameter scales to be normalized
-automatically, with the option of an adaptive dense metric and a full
-automated standardization of the posterior in \proglang{Stan} 2.0.
+variation of the parameter scales.  In \proglang{Stan} 1.0 we
+introduced an adaptive diagonal metric (mass matrix) into our HMC
+implementations that allowed the parameter scales to be standardized
+automatically; Stan 2.0 added an option to estimate a dense metric
+(mass matrix) and a full covariance standardization of the posterior.
 
-Because the dense metric performs only a global standardization, the
-performance of \proglang{Stan} in models where the relative parameter
-scales varies by location, such as hierarchical and latent models, can
-suffer.  Riemannian manifold Hamiltonian Monte Carlo (RHMC) introduces
-a location-dependent metric that can overcome these final hurdles
-\citep{GirolamiCalderhead:2011}; Stan has a prototype implementation
-of RHMC based on the SoftAbs metric of \citep{Betancourt:2012}, using
-a generalization of NUTS to Riemannian manifolds \citep{Betancourt:2013}.
+Because the diagonal and dense metrics perform only a global
+standardization, the performance of \proglang{Stan} in models where
+the relative parameter scales varies by location, such as hierarchical
+and latent models, can suffer (hierarchical modeling is covered in
+Sections~\ref{hierarchical-modeling.section} and reparameterizations to speed it
+up in \ref{centering.section}).  Riemannian manifold Hamiltonian Monte
+Carlo (RHMC) introduces a location-dependent metric that can overcome
+these final hurdles \citep{GirolamiCalderhead:2011}; Stan has a
+prototype implementation of RHMC based on the SoftAbs metric of
+\citep{Betancourt:2012}, using a generalization of NUTS to Riemannian
+manifolds \citep{Betancourt:2013}.
 
 \section{Overview}
 
@@ -464,10 +476,7 @@ to the data is just the file name \code{bernoulli.data.R}.
 \end{CodeInput}
 \end{CodeChunk}
 %
-For Windows, the \code{./} before the command should be removed.  This
-invocation specifies the executable program, the data file, the file
-to which the samples are written, the identity of the chain, and a
-seed for the random number generator.
+For Windows, the \code{./} before the command should be removed.  
 
 \subsubsection{Terminal output from sampler}
 
@@ -543,7 +552,7 @@ and constraints is available by executing
 \end{CodeChunk}
 %
 The sampler and its configuration are described at greater length in
-the manual.
+the manual \citep{Stan:2013}.
 
 \subsubsection{Samples file output}
 
@@ -593,13 +602,13 @@ with a summary of the configuration parameters for the run.
 \proglang{Stan}'s behavior is fully specified by these configuration
 parameters.  By using the same version of \proglang{Stan} and these
 configuration parameters, exactly the same output file can be
-reproduced.  The pseudo-random numbers generated by the sampler are
+reproduced.  The pseudorandom numbers generated by the sampler are
 fully determined by the seed (here randomly generated based on the
 time of the run, with value \code{847896134}) and the identifier (here
 \code{0}).  The identifier is used to advance the underlying
-pseudo-random number generator a sufficient number of values that
+pseudorandom number generator a sufficient number of values that
 using multiple chains with the same seed and different identifiers
-will draw from different subsequences of the pseudo-random number
+will draw from different subsequences of the pseudorandom number
 stream determined by the seed.
 
 The output contiues with a CSV header naming the columns of the
@@ -618,7 +627,7 @@ iteration.%
   as HMC \citep{MetropolisEtAl:1953}.  For NUTS, the acceptance
   statistic is defined as the average acceptance probabilities of all
   possible samples in the proposed tree; NUTS itself uses a slice
-  sampling algorithm for rejection \citep{Neal:2003}.}
+  sampling algorithm for rejection \citep{Neal:2003, HoffmanGelman:2011}.}
 %
 The column \code{stepsize\_\_} indicates the step size
 (i.e., time interval) of the simulated trajectory, while the column 
@@ -639,7 +648,7 @@ Next, the results of adaptation are printed as comments.
 By default, \proglang{Stan} uses the NUTS sampler with a diagonal mass
 matrix.  The mass matrix is estimated, roughly speaking, by
 regularizing the sample covariance of the latter half of the warmup
-samplers; see \citep{Stan:2013} for full details.  A dense mass matrix
+samples; see \citep{Stan:2013} for full details.  A dense mass matrix
 may also be estimated, or the mass matrix may be set to the unit matrix.
 
 The rest of the file contains samples, one per line, matching the
@@ -706,36 +715,6 @@ random numbers will in fact be independent as the chain identifier
 is used to skip the pseudorandom number generator ahead.  See
 Section~\ref{rng.section} for more information.
 
-\proglang{Stan} supplies a command-line program \code{bin/print} to
-summarize the output of one or more MCMC chains.  Given a directory
-containing output from sampling, it is invoked as
-%
-\begin{CodeChunk}
-\begin{CodeInput}
-> ls output*.csv
-\end{CodeInput}
-\begin{CodeOutput}
-output.csv	output1.csv	output2.csv	output3.csv
-\end{CodeOutput}
-\begin{CodeInput}
-> $stan/bin/print output*.csv
-\end{CodeInput}
-
-\end{CodeChunk}
-%
-The output is shown in Figure~\ref{print-output.fig}.%
-%
-\footnote{Aligning columns when printing rows of varying scales
-  presents a challenge.  For each column, the program calculates the
-  the maximum number of digits required to print an entry in that
-  column with the specified precision. For example, a precision of 2
-  for the number -0.000012 requires nine characters (\code{-0.000012})
-  to print without scientific notation versus seven digits with
-  (\code{-1.2e-5}).  If the discrepancy is above a fixed threshold,
-  scientific notation is used.  Compare the results in the \code{mean}
-  column versus the \code{sd} column.}
-%
-
 \begin{figure}
 \begin{Code}
 Inference for Stan model: bernoulli_model
@@ -764,6 +743,39 @@ theta            1399    19382  1.00e+00
 \caption{\it Output of \code{bin/print} for the Bernoulli estimation model in
   Figure~\ref{bernoulli-model.fig}.}\label{print-output.fig}
 \end{figure}
+
+\proglang{Stan} supplies a command-line program \code{bin/print} to
+summarize the output of one or more MCMC chains.  Given a directory
+containing output from sampling,
+%
+\begin{CodeChunk}
+\begin{CodeInput}
+> ls output*.csv
+\end{CodeInput}
+\begin{CodeOutput}
+output.csv	output1.csv	output2.csv	output3.csv
+\end{CodeOutput}
+\end{CodeChunk}
+%
+posterior summaries are printed using
+%
+\begin{CodeChunk}
+\begin{CodeInput}
+> $stan/bin/print output*.csv
+\end{CodeInput}
+\end{CodeChunk}
+%
+The output is shown in Figure~\ref{print-output.fig}.%
+%
+\footnote{Aligning columns when printing rows of varying scales
+  presents a challenge.  For each column, the program calculates the
+  the maximum number of digits required to print an entry in that
+  column with the specified precision. For example, a precision of 2
+  for the number -0.000012 requires nine characters (\code{-0.000012})
+  to print without scientific notation versus seven digits with
+  (\code{-1.2e-5}).  If the discrepancy is above a fixed threshold,
+  scientific notation is used.  Compare the results in the \code{mean}
+  column versus the \code{sd} column.}
 %
 Each row of the output summarizes a different value whose name is
 provided in the first column.  These correspond to the columns in the
@@ -786,7 +798,7 @@ diagnose nonstationary chains; see \citep{GelmanEtAl:2013} and
 The column \code{N\_eff} is the number of effective samples in a
 chain.  Because MCMC methods produce correlated samples in each chain,
 estimates such as posterior means are not as accurate as they would be
-with truly independent samples.  To number of effective samples is an
+with truly independent samples.  The number of effective samples is an
 estimate of the number of independent samples that would lead to the
 same accuracy.  The Monte Carlo standard error (\code{MCSE}) is an
 estimate of the error in estimating the posterior mean based on
@@ -814,7 +826,7 @@ the posterior mean of $\theta$ is $3/(3+9) = 0.25$ and the posterior
 mode of $\theta$ is $(3-1)/(3 + 9 - 2) = 0.2$.
 
 
-\subsection{Posterior Mode Estimates}
+\subsection{Posterior mode estimates}
 
 \subsubsection{Posterior modes with optimization}
 
@@ -866,13 +878,12 @@ current iteration's value of the parameter vector and the previous
 value (\code{||dx||}), and the length of the gradient vector
 (\code{||grad||}).
 
- The optimizer
-terminates when any of the log probability, gradient, or parameter
-values are within their specified tolerance.  The default optimizer is
-the Broyden-Fletcher-Goldfarb-Shanno (BFGS), a quasi-Newton method
-which employs exactly computed gradients and an efficient
-approximation to the Hessian; see \citep{NocedalWright:2006} for a
-textbook exposition of the BFGS algorithm.
+The optimizer terminates when any of the log probability, gradient, or
+parameter values are within their specified tolerance.  The default
+optimizer uses the Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm,
+a quasi-Newton method which employs exactly computed gradients and an
+efficient approximation to the Hessian; see \citep{NocedalWright:2006}
+for a textbook exposition of the BFGS algorithm.
 
 \subsubsection{Optimizer output file}
 
@@ -917,8 +928,13 @@ single parameter name, \code{theta}.  The next line shows that the
 posterior mode for \code{theta} is 0.2000000000125715, matching the
 true posterior mode of 0.20 very closely.
 
-Optimization is carried out on the unconstrained parameter space, but 
-without the Jacobian adjustment to the log probability.
+Optimization is carried out on the unconstrained parameter space, but
+without the Jacobian adjustment to the log probability.  This ensures
+modes are defined with respect to the constrained parameter space as
+declared in the parameters block and used in the model specification.
+The need to suppress the Jacobian to match the scaling of the declared
+parameters highlights the sensitivity of posterior modes to parameter
+transforms. 
 
 \subsection{Diagnostic mode}
 
@@ -978,7 +994,7 @@ same whether a \proglang{Stan} model is being used by one of the
 built-in samplers or optimizers or being used externally by a
 user-defined sampler or optimizer.
 
-\subsection{Example: hierarchical model, with inference}
+\subsection{Example: hierarchical model, with inference}\label{hierarchical-modeling.section}
 
 \cite[Section 5.1]{GelmanEtAl:2013} define a hierarchical model of the
 incidence of tumors in rats in control groups across trials; a very
@@ -1246,15 +1262,15 @@ forward simulation for predictive posterior checks; see
 \citep{GelmanEtAl:2013} for examples.
 
 The \proglang{BUGS} surgical example explored the ranking of
-institutions in terms of surgical mortality.  This is coded in the
-example in Figure~\ref{hier-binom.fig} using the generated quantities
-block.  The generated quantity variable \code{rnk[j]} will hold the
-rank of institution \code{j} from 1 to \code{J} in terms of mortality
-rate \code{theta[j]}.  The ranks are extracted using the \code{rank}
-function. The posterior summary will print average rank and deviation,
-but the values can also be extracted in order to plot posterior rank
-histograms by institution as done in \citep[Examples, Volume
-1]{LunnEtAl:2000}.
+institutions in terms of surgical mortality \citep[Examples, Volume
+1]{LunnEtAl:2000}.  This is coded in the example in
+Figure~\ref{hier-binom.fig} using the generated quantities block.  The
+generated quantity variable \code{rnk[j]} will hold the rank of
+institution \code{j} from 1 to \code{J} in terms of mortality rate
+\code{theta[j]}.  The ranks are extracted using the \code{rank}
+function. The posterior summary will print average rank and deviation.
+\citep{LunnEtAl:2000} illustrated posterior inference by plotting
+posterior rank histograms.
 
 Posterior comparisons can be carried out directly or using rankings.
 For instance, the model in Figure~\ref{hier-binom.fig} sets
@@ -1364,7 +1380,7 @@ local variables & any statement block
   literals.}\label{variable-kinds.fig}
 \end{figure}
 %
-\cite[p.~366]{GelmanHill:2007} provide a taxonomy of the kinds of
+\citet[p.~366]{GelmanHill:2007} provide a taxonomy of the kinds of
 variables used in Bayesian models.  Figure~\ref{variable-kinds.fig}
 contains Gelman and Hill's taxonomy aligned with the corresponding
 locations of declarations and definitions in \proglang{Stan}.
@@ -1452,17 +1468,17 @@ no location at which it makes sense to test that they satisfy the
 constraints. 
 
 
-\subsection{Implicit Uniform Priors}\label{implicit-prior.section}
+\subsection{Implicit uniform priors}\label{implicit-prior.section}
 
 The default distribution for a variable is uniform over its support.
 For instance, a variable declared with a lower bound of 0 and an upper
 bound of 1 implicitly receives a $\mbox{\sf Uniform}(0,1)$
 distribution.  These implicit uniform priors are improper if the
 variable has unbounded support.  For instance, the uniform
-distribution over real values with upper and lower bounds, simplexes
+distributions over real values with upper and lower bounds, simplexes
 and correlation matrices is proper, but the uniform distribution over
 unconstrained or one-side constrained reals, ordered vectors or
-covariance matrices is not proper.
+covariance matrices are not proper.
 
 \proglang{Stan} does not require proper priors, but if the posterior
 is improper, \proglang{Stan} will halt with an error message.%
@@ -1471,7 +1487,7 @@ is improper, \proglang{Stan} will halt with an error message.%
   parameters overflow to infinity during simulation.}
 
 
-\subsection{The non-centered parameterization for hierarchical models}
+\subsection{The non-centered parameterization for hierarchical models}\label{centering.section}
 
 Consider the following hierarchical logistic regression model fragment.
 %
@@ -1499,7 +1515,7 @@ lower-level parameters and introduces a large change in density across
 the posterior.  Unfortunately the expected density variation of an HMC
 transition is limited%
 %
-\footnote{The limited density variation is a ultimately consequence of
+\footnote{The limited density variation is ultimately a consequence of
   a constant metric.  An additional benefit of RHMC are transitions
   that can cover much larger variations in density, making it uniquely
   suited to these models; see \citep{Neal:2011}.}
@@ -1551,7 +1567,7 @@ declaring them in appropriate blocks based on usage) makes
 \proglang{Stan} programs easier to read and easier to debug by making
 explicit the modeling decisions and expression types.
 
-\subsection{Primitive Types}
+\subsection{Primitive types}
 
 The primitive types of \proglang{Stan} are \code{real} and \code{int},
 which are used to represent continuous and integer values.  These
@@ -1559,7 +1575,7 @@ values are represented directly in \proglang{C++} as types
 \code{double} and \code{int}.  Integer expressions can be used
 anywhere a real value is required, but not {\it vice-versa}.  
 
-\subsection{Vector and Matrix Types}
+\subsection{Vector and matrix types}
 
 \proglang{Stan} supports vectors, row vectors, and matrices with the
 usual access operations.  Indexing for vector, matrix, and array types
@@ -1572,15 +1588,17 @@ All vector and matrix types contain real values and may not be
 declared to contain integers.  Collections of integers are represented
 using arrays.
 
-\subsection{Array Types}
+\subsection{Array types}
 
 An array may have entries of any other type.  For example, arrays of
 integers and reals are allowed, as are arrays of vectors or arrays of
 matrices.  
 
 Higher-dimensional arrays are intrinsically arrays of arrays.  An
-entry two-dimensional array \code{y} may be accessed as \code{y[1,2]}
-or \code{y[1][2]}, with the expression \code{y[1]} denoting an array.%
+entry in a two-dimensional array \code{y} may be accessed as
+\code{y[1,2]}.  The expression \code{y[1]} by itself denotes the
+one-dimensional array whose values correspond to the first row of
+\code{y}.  Thus \code{y[1][2]} has the same value as \code{y[1,2]}.%
 %
 \footnote{Arrays are stored in row-major order and matrices in
   column-major order.}
@@ -1592,7 +1610,7 @@ arrays of integers may not be used where real arrays are required.%
   not covariant.  This follows the behavior of both arrays and
   standard library containers in \proglang{C++}.}
 
-\subsection{Constrained Variable Types}
+\subsection{Constrained variable types}
 
 Variables may be declared with constraints.  The constraints have
 different effects depending on the block in which the variable is
@@ -1666,24 +1684,39 @@ define a log probability function.
 
 There is an implicitly defined variable \code{lp\_\_} (available in 
 the transformed parameters and model blocks) denoting the log
-probability that will be returned by the log probability function.  A
-sampling statement is nothing more than shorthand for incrementing the
-log probability accumulator \code{lp\_\_}.  For example, if \code{beta}
-is a parameter of type \code{real}, the sampling statement
+probability that will be returned by the log probability function.  
+
+\subsubsection{Sampling statements}
+
+A sampling statement is nothing more than shorthand for incrementing
+the log probability accumulator \code{lp\_\_}.  For example, if
+\code{beta} is a parameter of type \code{real}, the sampling statement
 %
 \begin{Code}
 beta ~ normal(0,1);
 \end{Code}
 %
-has the exact same effect as the assignment statement
+has the exact same effect (up to dropping constant terms) as the
+special log probability increment statement
 %
 \begin{Code}
 increment_log_prob(normal_log(beta,0,1));
 \end{Code}
-%
-The sampling statement distribution \code{normal} is shorthand for the
-function \code{normal\_log}, and both the left-hand side variate and
-right-hand side parameters become arguments.
+
+
+\subsubsection{Define variables before sampling statements}
+
+The translation of sampling statements to log probability function
+evaluations explains why variables must be defined {\it before} they
+are used.  In particular, a sampling statement does \emph{not} sample
+the left-hand side variable from the right-hand side distribution.
+
+Parameters are all defined externally by the sampler; all other
+variables must be explicitly defined with an assignment statement
+before being used.
+
+
+\subsubsection{Direct definition of probability functions}
 
 Because computation is only up to a proportion, this sampling
 statement in turn has the same effect as the direct implementation in
@@ -1697,6 +1730,8 @@ If \code{beta} is of type \code{vector}, replace \code{beta * beta}
 with \code{beta' * beta}.  Distributions whose probability functions
 are not built directly into \proglang{Stan} can be implemented
 directly in this fashion.
+
+
 
 \subsection{Sequences of statements and execution order}
 
@@ -1820,7 +1855,7 @@ returned, so that \code{Sigma[m]} is row \code{m} of the matrix
 \code{Sigma}.  
 
 Various reductions are provided for arrays and matrices, such as sums,
-means, standard deviations and norms.  Replications are also available
+means, standard deviations, and norms.  Replications are also available
 to copy a value into every cell of a matrix.  Slices of matrices and
 vectors may be accessed by row, column, or general sub-block
 operations.
@@ -1860,7 +1895,7 @@ probability functions share various features of their declarations and
 behavior.
 
 All probability functions are defined on the log scale to avoid
-underflow.  They are all named with the suffix \code{\_log}, e.g.
+underflow.  They are all named with the suffix \code{\_log}, e.g.,
 \code{normal\_log()}, is the log-scale normal distribution density
 function.
 
@@ -1901,11 +1936,14 @@ decide which expressions denote constants.%
   parameter on the log probability and derivative functions generated
   in \proglang{C++} for a model.}
 %
-For example, executing \code{normal\_log(y,0,sigma)} only evaluates
+For example, executing \code{y ~ normal(0,sigma)} only evaluates
 \code{log(sigma)} if \code{sigma} is a parameter, transformed
 parameter, or a local variable in the transformed parameters or model
 block; that is, \code{log(sigma)} is not evaluated if \code{sigma} is
 constant as defined above.  
+
+Constant terms are {\it not} dropped in explicit function evaluations,
+such as \code{normal\_log(y,0,sigma)}.
 
 \subsubsection{Vectorization}
 
@@ -1950,20 +1988,20 @@ information supplied by a model.
 
 \subsubsection{Hamiltonian Monte Carlo}
 
-The MCMC samplers provided include Euclidean Manifold Hamiltonian
+The MCMC samplers provided include Euclidean manifold Hamiltonian
 Monte Carlo (EHMC, or just HMC) \citep{DuaneEtAl:1987, Neal:1994,
   Neal:2011} and the No-U-Turn sampler (NUTS)
-\citep{HoffmanGelman:2011}.  Both versions of HMC allow estimation or
-specification of unit, diagonal, or full mass matrices.  NUTS, the
-default sampler for \proglang{Stan}, automatically adapts the number
-of leapfrog steps, eliminating the need for user-specified tuning
-parameters.  Both algorithms take advantage of gradient information in
-the log probability function to generate coherent motion through the
-posterior that dramatically reduces the autocorrelation of the
-resulting transitions.
+\citep{HoffmanGelman:2011}.  Both the basic and NUTS versions of HMC
+allow estimation or specification of unit, diagonal, or full mass
+matrices.  NUTS, the default sampler for \proglang{Stan},
+automatically adapts the number of leapfrog steps, eliminating the
+need for user-specified tuning parameters.  Both algorithms take
+advantage of gradient information in the log probability function to
+generate coherent motion through the posterior that dramatically
+reduces the autocorrelation of the resulting transitions.
 
 \proglang{Stan} will soon have an implementation of Riemannian
-Manifold Hamiltonian Monte Carlo (RHMC)
+manifold Hamiltonian Monte Carlo (RHMC)
 \citep{GirolamiCalderhead:2011}, using the SoftAbs metric to robustly
 incorporate posterior curvature into the Hamiltonian simulation
 \cite{Betancourt:2012}.  \proglang{Stan}'s MCMC framework also makes
@@ -1987,11 +2025,11 @@ probability function, but the lack of gradient information induces
 random walk behavior, leading to slow mixing.
 
 
-\subsubsection{Ensemble Samplers}
+\subsubsection{Ensemble samplers}
 
 Two flavors of ensemble samplers are also in the works: an affine invariant
 ensemble sampler \citep{GoodmanWeare:2010} and a differential
-evolution sampler \cite{TerBraak:2006}.  Ensemble samplers do not
+evolution sampler \citep{TerBraak:2006}.  Ensemble samplers do not
 require derivative information, but typically require at least as many
 chains to be run as the number of dimensions in order to have full
 rank search of the posterior.  They also require slightly different
@@ -2014,7 +2052,7 @@ Broyden-Fletcher-Goldfarb-Shannon-Boyd (BFGS) optimizer.  BFGS is a
 quasi-Newton optimizer that evaluates gradients directly, then uses
 the gradients to update an approximation to the Hessian.  Plans are in
 the works to also include the more involved, but more scalable
-limited-memory BFGS (L-BFGS) scheme.  \citep{NocedalWright:2006} cover
+limited-memory BFGS (L-BFGS) scheme.  \citet{NocedalWright:2006} cover
 both BFGS and L-BFGS samplers.
 
 \subsubsection{Conjugate gradient}
@@ -2158,7 +2196,7 @@ effect.
 The top-level makefile also supplies targets to build all of the
 documentation \proglang{C++} API documentation is generated using the
 \pkg{doxygen} package \citep{Doxygen:2011}.  The \proglang{Stan}
-manual \citep{Stan:2013} is typeset using the \LaTeX package
+manual \citep{Stan:2013} is typeset using the \LaTeX\ package
 \citep{MittelbachEtAl:2004}.
 
 The makefile also has targets for all of the unit and functional
@@ -2172,7 +2210,7 @@ First and foremost, we would like to thank all of the users of
 it as we ironed out the details in the first release.  We'd like to
 particularly single out the students in Andrew Gelman's Bayesian data
 analysis courses at Columbia Univesity and Harvard University, who
-served as trial subjects for both \proglang{Stan} and \cite{GelmanEtAl:2013}.
+served as trial subjects for both \proglang{Stan} and \citep{GelmanEtAl:2013}.
 
 Stan was and continues to be supported largely through grants from the
 U.~S. government.  Grants which indirectly supported the initial
