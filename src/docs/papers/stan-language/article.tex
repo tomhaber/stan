@@ -72,10 +72,11 @@
   imperatively defines a log probability function over parameters
   conditioned on specified data and constants.  As of version 2.1,
   \proglang{Stan} provides full Bayesian inference for continuous-variable
-  models through Markov chain Monte Carlo (MCMC) methods such as
-  the No-U-Turn sampler (NUTS), an adaptive form of Hamiltonian Monte
-  Carlo (HMC) sampling.  Penalized maximum likelihood estimates are
-  calculated using optimization methods such as BFGS.
+  models through Markov chain Monte Carlo methods such as
+  the No-U-Turn sampler, an adaptive form of Hamiltonian Monte
+  Carlo sampling.  Penalized maximum likelihood estimates are
+  calculated using optimization methods such as the
+  Broyden–Fletcher–Goldfarb–Shanno algorithm.
 
   % This may be contrasted
   % with the \proglang{BUGS} language, in which a program
@@ -109,14 +110,14 @@
   \proglang{Stan} is also a platform for computing log densities and
   their gradients and Hessians, which can be used in alternative
   algorithms such as variational Bayes, expectation propagation, and
-  marginal inference using approximate integration.  To this end, Stan
+  marginal inference using approximate integration.  To this end, \proglang{Stan}
   is set up so that the densities, gradients, and Hessians, along with
   intermediate quantities of the algorithm such as acceptance
   probabilities, are easily accessible.
 
   \proglang{Stan} can be called from the command line, through
   \proglang{R} using the \pkg{RStan} package, or through
-  \proglang{Python} using the \pkg{PyStan} package.  All three
+<  \proglang{Python} using the \pkg{PyStan} package.  All three
   interfaces support sampling or optimization-based inference and
   analysis, and \pkg{RStan} and \pkg{PyStan} also provide access to
   log probabilities, gradients, Hessians, and I/O transforms.
@@ -185,9 +186,9 @@
 We did not set out to build \proglang{Stan} as it currently exists.%
 %
 \footnote{\proglang{Stan}'s home page, \url{http://mc-stan.org/},
-  links to the Stan manual, example models including translations of
-  the BUGS examples and the models from \citep{GelmanHill:2007},
-  getting started instructions and full documentation for Stan's
+  links to the \proglang{Stan} manual, example models including translations of
+  the \proglang{BUGS} examples and the models from \citep{GelmanHill:2007},
+  getting started instructions and full documentation for \proglang{Stan}'s
   interfaces for the command line shell (\pkg{CmdStan}), \proglang{Python}
   (\pkg{PyStan}), and \proglang{R} (\pkg{RStan}), and the source code repositories
   and issue trackers.}
@@ -327,17 +328,17 @@ performance of the numerical simulation in HMC scales with the
 variation of the parameter scales.  In \proglang{Stan} 1.0 we
 introduced an adaptive diagonal metric (mass matrix) into our HMC
 implementations that allowed the parameter scales to be standardized
-automatically; Stan 2.0 added an option to estimate a dense metric
+automatically; \proglang{Stan} 2.0 added an option to estimate a dense metric
 (mass matrix) and a full covariance standardization of the posterior.
 
 Because the diagonal and dense metrics perform only a global
 standardization, the performance of \proglang{Stan} in models where
 the relative parameter scales varies by location, such as hierarchical
 and latent models, can suffer (hierarchical modeling is covered in
-Sections~\ref{hierarchical-modeling.section} and reparameterizations to speed it
-up in \ref{centering.section}).  Riemannian manifold Hamiltonian Monte
+Section~\ref{hierarchical-modeling.section} and reparameterizations to speed it
+up in Section~\ref{centering.section}).  Riemannian manifold Hamiltonian Monte
 Carlo (RHMC) introduces a location-dependent metric that can overcome
-these final hurdles \citep{GirolamiCalderhead:2011}; Stan has a
+these final hurdles \citep{GirolamiCalderhead:2011}; \proglang{Stan} has a
 prototype implementation of RHMC based on the SoftAbs metric of
 \citep{Betancourt:2012}, using a generalization of NUTS to Riemannian
 manifolds \citep{Betancourt:2013}.
@@ -379,7 +380,7 @@ model {
 The model treats the observed binary data, \code{y[1],...,y[N]}, as
 independent and identically distributed, with success probability
 \code{theta}.  The vectorized likelihood statement can also be coded
-using a loop as in BUGS, although it will run more slowly than the
+using a loop as in \proglang{BUGS}, although it will run more slowly than the
 vectorized form:
 %
 \begin{Code}
@@ -612,7 +613,7 @@ will draw from different subsequences of the pseudorandom number
 stream determined by the seed.
 
 The output contiues with a CSV header naming the columns of the
-output. For the default NUTS sampler in Stan 2.1.0, these are
+output. For the default NUTS sampler in \proglang{Stan} 2.1.0, these are
 %
 \begin{Code}
 lp__,accept_stat__,stepsize__,treedepth__,n_divergent__,theta
@@ -1774,7 +1775,7 @@ ignored.
 The preferred style follows that of \proglang{C++}, with line comment
 used for everything but multiline comments.  
 
-Stan follows the \proglang{C++} convention of separating words in
+\proglang{Stan} follows the \proglang{C++} convention of separating words in
 variable names using underbars (\code{\_}), rather than dots
 (\code{.}), as used in \proglang{R} and \proglang{BUGS}, or camel case
 as used in Java.
@@ -1834,10 +1835,10 @@ gamma and digamma functions, and generalized linear model link
 functions and their inverses.  There are also many compound functions,
 such as \code{log1m(x)}, which is more stable arithmetically for
 values of x near 0 than \code{log(1 - x)}.  \proglang{Stan}'s special
-functions are listed in Figures~\ref{special-functions.fig} and
-\ref{special-functions-cont.fig}.  
+functions are listed in Figure~\ref{special-functions.fig} and
+Figure~\ref{special-functions-cont.fig}.  
 
-In addition to special functions, Stan includes distributions with
+In addition to special functions, \proglang{Stan} includes distributions with
 alternative parameterizations, such as \code{bernoulli_logit}, which
 takes a parameter on the log odds (i.e., logit) scale.  This allows a
 more concise notation for generalized linear models as well as more
@@ -1889,7 +1890,7 @@ matrices and vectors, are listed in Figure~\ref{operators.fig}.
 
 \subsection{Probability functions}
 
-Stan supports a growing collection of built-in univariate and
+\proglang{Stan} supports a growing collection of built-in univariate and
 multivariate probability density and mass functions.  These
 probability functions share various features of their declarations and
 behavior.
@@ -1908,9 +1909,10 @@ floating-point arithmetic).  For example,
 \code{normal\_log(y,} \code{mu,} \code{sigma)} requires the scale parameter
 \code{sigma} to be non-negative.
 
-The list of probability functions is provided in Figures
-\ref{prob-functions.fig}, \ref{prob-functions-cont.fig}, and
-\ref{prob-functions-cont-2.fig}. 
+The list of probability functions is provided in
+Figure~\ref{prob-functions.fig}, 
+Figure~\ref{prob-functions-cont.fig}, and
+Figure~\ref{prob-functions-cont-2.fig}. 
 
 \subsubsection{Up to a proportion calculations}
 
@@ -2039,7 +2041,7 @@ multiple correlated chains of draws.
 \subsection{Optimizers}
 
 In addition to performing full Bayesian inference via posterior
-sampling, Stan also can perform optimization (i.e., computation of the
+sampling, \proglang{Stan} also can perform optimization (i.e., computation of the
 posterior mode).  We are currently working on implementing other
 optimization-based inference approaches including variational Bayes,
 expectation propagation, and and marginal inference using approximate
@@ -2212,7 +2214,7 @@ particularly single out the students in Andrew Gelman's Bayesian data
 analysis courses at Columbia Univesity and Harvard University, who
 served as trial subjects for both \proglang{Stan} and \citep{GelmanEtAl:2013}.
 
-Stan was and continues to be supported largely through grants from the
+\proglang{Stan} was and continues to be supported largely through grants from the
 U.~S. government.  Grants which indirectly supported the initial
 research and development included grants from the Department of Energy
 (DE-SC0002099), the National Science Foundation (ATM-0934516), and the
@@ -2220,7 +2222,7 @@ Department of Education Institute of Education Sciences
 (ED-GRANTS-032309-005 and R305D090006-09A).  The high-performance
 computing facility on which we ran evaluations was made possible
 through a grant from the National Institutes of Health
-(1G20RR030893-01).  Stan is currently supported in part by a grant
+(1G20RR030893-01).  \proglang{Stan} is currently supported in part by a grant
 from the National Science Foundation (CNS-1205516).
 
 Finally, we would like to thank all those who contributed
