@@ -70,7 +70,7 @@
 \Abstract{ \proglang{Stan} is a probabilistic programming language for
   specifying statistical models. A \proglang{Stan} program
   imperatively defines a log probability function over parameters
-  conditioned on specified data and constants.  As of version 2.1,
+  conditioned on specified data and constants.  As of version 2.2.0,
   \proglang{Stan} provides full Bayesian inference for continuous-variable
   models through Markov chain Monte Carlo methods such as
   the No-U-Turn sampler, an adaptive form of Hamiltonian Monte
@@ -201,18 +201,19 @@ priors, nonconjugate coefficient priors, latent effects as in
 item-response models, and varying output link functions and
 distributions.
 
-These models turned out to be a challenge for
-existing general purpose inference software.  A direct encoding in
-\proglang{BUGS} \citep{LunnEtAl:2000,LunnEtAl:2009,LunnEtAl:2012} or
-\proglang{JAGS} \citep{Plummer:2003} can grind these tools to a halt.
-We began by adding custom vectorized logistic regressions to \proglang{JAGS}
-using \proglang{C++} to overcome the cost of interpretation.  Although
-this is much faster than looping in \proglang{JAGS}, it quickly became
-clear that the root of the problem was the slow convergence of
-conditional sampling when parameters were highly correlated 
-in the posterior, as for time-series models and hierarchical models 
-with interacted predictors.  We finally realized we needed a better sampler, 
-not a more efficient implementation of Gibbs sampling.
+These models turned out to be a challenge for existing general purpose
+inference software.  A direct encoding in \proglang{BUGS}
+\citep{LunnEtAl:2000,LunnEtAl:2009,LunnEtAl:2012} or
+\proglang{JAGS}~\citep{Plummer:2003} can grind these tools to a halt.
+We began by adding custom vectorized logistic regressions to
+\proglang{JAGS} using \proglang{C++} to overcome the cost of
+interpretation.  Although this is much faster than looping in
+\proglang{JAGS}, it quickly became clear that the root of the problem
+was the slow convergence of conditional sampling when parameters were
+highly correlated in the posterior, as for time-series models and
+hierarchical models with interacted predictors.  We finally realized
+we needed a better sampler, not a more efficient implementation of
+Gibbs sampling.
 
 We briefly considered trying to tune proposals for a random-walk
 Metropolis-Hastings sampler, but that seemed too problem specific and
@@ -307,7 +308,7 @@ back on itself.  Once the trajectory has terminated, a new sample is
 drawn from the tree.  In its original version, NUTS also estimates a
 step size during warmup based on a target acceptance probability. 
 
-We thought we were home free at this point, but when we measured the
+We thought we were home free, but when we measured the
 speed of some \proglang{BUGS} examples versus \proglang{Stan} we were
 very disappointed.  \proglang{BUGS}'s very first example model, Rats,
 ran more than an order of magnitude faster in \proglang{JAGS} than in
@@ -521,7 +522,8 @@ samples file as comments.
    refresh = 100 (Default)
 
 Gradient evaluation took 4e-06 seconds
-1000 transitions using 10 leapfrog steps per transition would take 0.04 seconds.
+1000 transitions using 10 leapfrog steps per transition would take
+0.04 seconds.
 Adjust your expectations accordingly!
 
 Iteration:    1 / 2000 [  0%]  (Warmup)
@@ -613,7 +615,7 @@ will draw from different subsequences of the pseudorandom number
 stream determined by the seed.
 
 The output contiues with a CSV header naming the columns of the
-output. For the default NUTS sampler in \proglang{Stan} 2.1.0, these are
+output. For the default NUTS sampler in \proglang{Stan} 2.2.0, these are
 %
 \begin{Code}
 lp__,accept_stat__,stepsize__,treedepth__,n_divergent__,theta
@@ -863,8 +865,8 @@ parameters.
    refresh = 100 (Default)
 
 initial log joint probability = -12.4873
-    Iter      log prob        ||dx||      ||grad||       alpha  # evals  Notes 
-       7      -5.00402   8.61455e-07   1.25715e-10           1       10   
+    Iter      log prob        ||dx||      ||grad||   alpha  # evals  Notes 
+       7      -5.00402   8.61455e-07   1.25715e-10       1       10   
 Optimization terminated normally: 
   Convergence detected: change in objective function was below
   tolerance
@@ -2615,7 +2617,7 @@ lower-triangular by transpose \\
 % \nocite{WainwrightJordan:2008}
 \nocite{R:2013}
 \clearpage
-%\bibliographystyle{jss}
+% implicit: \bibliographystyle{jss}
 \bibliography{stan-paper}
 
 
