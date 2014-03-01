@@ -76,7 +76,7 @@
   the No-U-Turn sampler, an adaptive form of Hamiltonian Monte
   Carlo sampling.  Penalized maximum likelihood estimates are
   calculated using optimization methods such as the
-  Broyden–Fletcher–Goldfarb–Shanno algorithm.
+  Broyden-Fletcher-Goldfarb-Shanno algorithm.
 
   % This may be contrasted
   % with the \proglang{BUGS} language, in which a program
@@ -1142,7 +1142,7 @@ details.
 
 The probability distribution defined by a \proglang{Stan} program is
 intended to have unconstrained support (i.e., no points of zero
-probabilty), which greatly simplifies the task of writing samplers or
+probability), which greatly simplifies the task of writing samplers or
 optimizers.  To achieve unbounded support, variables declared with
 constrained support are transformed to an unconstrained space.  For
 instance, variables declared on $[0,1]$ are log-odds transformed and
@@ -1150,7 +1150,7 @@ non-negative variables declared to fall in $[0,\infty)$ are log
 transformed.  More complex transforms are required for simplexes (a
 reverse stick-breaking transform) and covariance and correlation
 matrices (Cholesky factorization).  The dimensionality of the
-resulting probabilty function may change as a result of the
+resulting probability function may change as a result of the
 transform. For example, a $K \times K$ covariance matrix requires only
 ${K \choose 2} + K$ unconstrained parameters, and a $K$-simplex
 requires only $K-1$ unconstrained parameters.
@@ -1159,7 +1159,7 @@ The unconstrained parameters over which the model is defined are
 inverse transformed back to their constrained forms before executing
 the model code.  To account for the change of variables, the log
 absolute Jacobian determinant of the inverse transform is added to the
-overall log probabilty function.%
+overall log probability function.%
 %
 \footnote{For optimization, the Jacobian adjustment is suppressed to
   guarantee the optimizer finds the maximum of the log probability
@@ -1167,7 +1167,7 @@ overall log probabilty function.%
   Jacobian is controlled by a template parameter in the \proglang{C++}
   code generated for a model.}
 %
-The gradients of the log probabilty function exposed include the
+The gradients of the log probability function exposed include the
 Jacobian term.  
 
 There is no validation required for the parameter block because the
@@ -1460,9 +1460,9 @@ compute the sum of the squares of entries in an array or vector
 \begin{Code}
 { 
   real sum_of_squares;
-  sum <- 0;
+  sum_of_squares <- 0;
   for (n in 1:N)
-    sum <- sum + y[n] * y[n];
+    sum_of_squares <- sum_of_squares + y[n] * y[n];
 }  
 \end{Code}
 %
@@ -1536,14 +1536,16 @@ parameterization for comparison.
 %
 \begin{Code}
 parameters {
-  vector[K] beta_raw;    
+  ...
+  vector[K] beta_raw;  // replaces beta as parameter  
 }
 transformed parameters {
-  vector[K] beta;
+  vector[K] beta;      // beta now a transformed parameter
   beta <- mu + sigma * beta_raw;
 }
 model {
-  beta ~ normal(0,1);
+  beta_raw ~ normal(0,1);  // beta now sampled from unit normal
+  ...
 }
 \end{Code}
 %
@@ -1585,7 +1587,18 @@ usual access operations.  Indexing for vector, matrix, and array types
 starts from one.  
 
 Vectors are declared with their sizes and matrices with their number
-of rows and columns.
+of rows and columns.  Vector, row vector, and matrix elements are
+accessed using bracket notation, as in \code{y[3]} for the third
+element of a vector or row vector and \code{a[2,3]} for the element in
+the third column of the second row of a matrix.  Indexing begins from
+1.  
+
+The notation \code{a[2]} accesses the second row of matrix \code{a}.
+Rows, columns and subblocks of matrices can be accessed using
+\code{row}, \code{col}, and \code{block} functions.  Slices of arrays
+can be accessed using the \code{head}, \code{tail}, and \code{segment}
+functions.  There are also special functions for creating a diagonal
+matrix from a vector and accessing the diagonal of a vector.
 
 All vector and matrix types contain real values and may not be
 declared to contain integers.  Collections of integers are represented
@@ -1612,6 +1625,9 @@ arrays of integers may not be used where real arrays are required.%
 \footnote{In the language of type theory, \proglang{Stan} arrays are
   not covariant.  This follows the behavior of both arrays and
   standard library containers in \proglang{C++}.}
+
+The manual contains a chapter discussing the efficiency tradeoffs and
+motivations for separating arrays and matrices.
 
 \subsection{Constrained variable types}
 
@@ -2052,7 +2068,7 @@ integration.  All these algorithms require optimization steps.
 \subsubsection{BFGS}
 
 The default optimizer in \proglang{Stan} is the
-Broyden-Fletcher-Goldfarb-Shannon-Boyd (BFGS) optimizer.  BFGS is a
+Broyden-Fletcher-Goldfarb-Shanno (BFGS) optimizer.  BFGS is a
 quasi-Newton optimizer that evaluates gradients directly, then uses
 the gradients to update an approximation to the Hessian.  Plans are in
 the works to also include the more involved, but more scalable
@@ -2215,6 +2231,9 @@ it as we ironed out the details in the first release.  We'd like to
 particularly single out the students in Andrew Gelman's Bayesian data
 analysis courses at Columbia Univesity and Harvard University, who
 served as trial subjects for both \proglang{Stan} and \citep{GelmanEtAl:2013}.
+
+We'd like to thank Aki Vehtari for comments and corrections on a draft
+of the paper.
 
 \proglang{Stan} was and continues to be supported largely through grants from the
 U.~S. government.  Grants which indirectly supported the initial
