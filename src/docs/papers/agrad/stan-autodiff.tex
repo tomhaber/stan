@@ -1,0 +1,429 @@
+\documentclass[10pt]{article}
+\usepackage{stan-papers}
+
+\title{\Large\bfseries \code{\bfseries agrad}: A C++ Library for Efficient, Scalable,
+  and Extensible Automatic Differentiation}
+\author{\large Bob Carpenter \\ {\small Columbia University}
+        \\[8pt]
+        \large Marcus Brubaker \\ {\small Toyota Technical Institute}
+   \and \large Matt Hoffman \\ {\small Adobe Research Labs}
+        \\[8pt]
+        \large Peter Li \\ {\small Columbia University}
+   \and \large Daniel Lee \\ {\small Columbia University}
+        \\[8pt]
+        \large Michael Betancourt \\ {\small University of Warwick}
+}
+\date{\vspace*{8pt}\normalsize \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract} 
+  \noindent
+  The \code{agrad} C++, forward- and reverse-mode automatic
+  differentiation library was defined to satisfy
+  six competing goals: extensibility, efficiency, scalability,
+  stability, portability, and usability. Its underlying
+  object-oriented design
+  and functional template abstraction supports the addition of new
+  functions based on value and first-order derivative calculations
+  abstracted from the underlying automatic differentiation mechanisms.
+  It uses a custom memory arena and template metaprogramming for
+  efficiency.  Its underlying reverse-mode 
+  evaluation is lazy for both efficiency and scalability.
+  First- and higher-order derivatives are avaialable through a
+  functional abstraction which hides all of the details of the
+  library's internals. For broad applicability and numerical
+  stability, it implements an extensive library of special functions,
+  matrix and linear algebra operations, probability functions, 
+  and ordinary differential equation solvers.  Evaluations on test
+  problems show that both its efficiency and scalability are state of
+  the art.  The \code{agrad} library is open-source licensed under the
+  new BSD license and has been tested for all major compilers for
+  Windows, Mac OS X, and Linux. 
+\end{abstract}
+
+
+\section{Introduction}
+
+Many scientific computing applications, including optimization,
+simulation, and differential equation solvers, require the computation
+of first-order and higher-order derivatives over functions defined on
+an application-by-application basis.  
+
+Although derivatives can be calculated and coded by hand, the process
+is both tedious and error prone, especially for algorithms represented
+in large amounts of code. Two popular alternatives are finite
+differencing and automatic differentiation. Finite differencing calculates a
+derivative of a function $f$ at $x$ by the linear approximation
+\[ 
+\frac{d}{dx}f(x) 
+\ \approx \
+\frac{f(x + \epsilon) - f(x - \epsilon)}{2\epsilon}.
+\]
+Automatic differentiation directly differentiates a computer program
+for $f$ by applying the chain rule to the expressions produced by the
+program's statements.
+
+In contrast to finite differencing methods, automatic differentiation
+is efficient and accurate. As an example of efficiency, gradient
+calculations require only a constant multiple of the time taken to
+evaluate a function independent of dimension, whereas finite
+differences require a multiple determined by the dimensionality.
+Automatic differentiation computes derivatives up to machine
+precision, whereas finite differences are notoriously imprecise
+because they require a tradeoff of arithmetic precision and accuracy
+in linear approximations that depends on scale and rarely allows more
+than 1e-6 relative accuracy even with scale-based tuning.
+
+The \code{agrad} library was introduced to overcome several
+shortcomings of existing implementations such as CppAD, Saccado,
+AdolC, and Adept. The main motivation was to allow easy extensibility
+to enable the implementation of a wide range of special functions,
+probability density, mass and cumulative distribution functions, and
+matrix and linear-algebra operations. A secondary motivation was to
+increase scalability and efficiency, particularly for the calculations
+of log probability functions as required for statistical inference
+through optimization and sampling. A third motivation was to provide
+simple interfaces that were portable and required no
+platform-dependent installation and could be both used and extended to
+new functions without understanding the internal differentiation data
+types. The rest of the paper describes how \code{agrad} is designed
+and implemented and why it improves the state of the art in
+efficiency, scalability, and usability.
+
+
+
+
+\section{Derivative Calculation Interface}
+
+The \code{agrad} library application programmer interface (API) is
+designed to allow client code to calculate derivatives and extend the
+built-in library without needing to know anything about the internals
+of the library's underlying automatic differentiation data types.
+This section describes how to calculate derivatives and the next how
+to add user-defined functions.
+
+To use the \code{agrad} library to calculate derivatives, client code
+need only define a templated functor, define an argument vector,
+define the appropriate vector or matrix to hold the result, and then
+call the derivative functional of the apporpriate order.
+
+The library also exposes an interface for direct access to the
+variables and methods used for automatic differentiation for
+finer-grained control and integration with other software.
+
+\subsection{Example Function: Neal's Funnel}
+
+The log of the funnel probability density function is a simple example
+of the kinds of probability functions \code{agrad} was designed to
+differentiation.  
+kinds of functions
+Consider the log of the funnel density
+\citep{Neal:2003}, which is defined for
+a positive scalar $v$ and $N$-vector $y$ by
+\[
+\mbox{funnel}(v,y) = \frac{1}{2} \left(
+  N v
+  + \frac{v^2}{9}
+  + \exp(-v) \sum_{n=1}^N y_n^2
+\right)
+\]
+\reffigure{funnel-cpp} provides a C++ implementation of the
+funnel function suitable for use with \code{agrad}.
+%
+\begin{figure}
+\begin{quote}
+\begin{Verbatim}
+struct funnel {
+  template <typename T>
+  T operator()(const std::vector<T>& x) const {
+    T v = x[0];
+    T sum_y_sq = 0;
+    for (size_t n = 1; n < x.size(); ++n)
+      sum_y_sq += x[n] * x[n];
+    T p1 = N * v;
+    T p2 = (v * v) / 9;
+    T p3 = sum_y_sq * exp(-v);
+    return (p1 + p2 + p3) / 2;
+  }
+};
+\end{Verbatim}
+\end{quote}
+\vspace*{-6pt}
+\caption{\it The funnel density implemented as a C++ functor operating
+  on a C++ standard template library vector containing $v$ followed by
+  $y$. The two quadratic terms could also be expressed using \code{agrad}'s
+  built-in functions\, \code{square} or\, \code{pow}.  The function
+  could alternatively be defined in terms of any class definining a
+  \code{size()} method and allowing \code{operator[]} indexing, such 
+  as an Eigen library vector or C++11 standard library array.
+}\label{funnel-cpp.figure}
+\end{figure}
+%
+
+
+\subsection{Derivative Calculation}
+
+Derivatives can be calculated using either C++ functionals operating
+on functions defined as functors, or directly using the underlying
+automatic differentiation data types.
+
+\subsubsection{Functional Approach}
+
+The \code{agrad} library supports a functional approach to calculating
+derivatives which is most easily explained with an example. The
+following code calculates the value \code{fx} and gradient \code{grad}
+of the funnel functor \code{f} evaluated at the argument vector
+\code{x}.
+%
+\begin{quote}
+\begin{Verbatim}
+funnel f;
+std::vector<double> x = ...;
+double fx;
+std::vector<double> grad;
+agrad::gradient(f,x,fx,grad);
+\end{Verbatim}
+\end{quote}
+
+\subsubsection{Direct Approach}
+
+The \code{agrad} library also supplies the same kind of low-level
+methods as other automatic differentiation libraries such as Adept,
+CppAD, and Saccado, although without the need for turning on or off
+``recording'' to explicitly manage memory. For example, the following
+function defines the log of the Beta density function
+%
+\begin{eqnarray*}
+f(x,\alpha,\beta) 
+& = & \log \distro{Beta}(x|\alpha,\beta)
+\\
+& = & (\alpha - 1) \log x + (\beta - 1) \log (1 - x) 
+  \log \Gamma(\alpha + \beta) - \log \Gamma(\alpha) - \log
+  \Gamma(\beta),
+\end{eqnarray*}
+%
+which can be implemented using built-in special functions as
+%
+\begin{quote}
+\begin{Verbatim}
+agrad::var f(double x, 
+             const agrad::var& a, const agrad::var& b) {
+  return (a - 1) * log(x) + (b - 1) * log1m(x)
+         + lgamma(a + b) - lgamma(a) - lgamma(b);
+}
+\end{Verbatim}
+\end{quote}
+%
+To calculate the derivatives of $y = f(x,\alpha,\beta)$ with respect to
+$\alpha,\beta$ at
+$\alpha = 1.9$, $\beta = 17.2$, and  $x = 0.329$, the code is
+%
+\begin{quote}
+\begin{Verbatim}
+agrad::var a = 1.9;    agrad::var b = 17.2;
+double x = 0.329;
+agrad::var y = f(x,a,b);
+fab.grad();
+double dy_da = a.adjoint();    double dy_db = b.adjoint();
+\end{Verbatim}
+\end{quote}
+%
+This approach can be used for arbitrary functions defined for
+arguments including \code{var}; see \refsection{flexible-signatures}
+for an example of how the beta density function is defined in
+\code{agrad}.
+
+
+\section{Flexible Type Signatures}\label{flexible-signatures.section}
+
+To allow for maximum flexibility and efficiency in calling functions, 
+\code{agrad}'s signature for the log Beta density is declared as
+%
+\begin{quote}
+\begin{Verbatim}
+template <typename Ty, typename Ta, typename Tb>
+inline typename agrad::return_type<Ty,Ta,Tb>::type
+beta_log(const Ty& y, const Ta& a, const Tb& b); 
+\end{Verbatim}
+\end{quote}
+%
+where a mechanism like that of Boost library's promotion template
+metaprogram is used to calculate the return type automatically as the
+most general type able to hold the result (e.g., \code{agrad::var} if
+used in place of \code{f} in the previous example). In general,
+\code{agrad}'s density functions are vectorized to allow any argument
+to be a scalar, standard vector, or Eigen vector of any primitive type
+or of type \code{var} (or of type \code{fvar<T>}, the forward-mode
+automatic differentiation variable type).  The need for this
+flexibility is why a simple log density library like Boost's, which
+template on a single type, cannot be directly used for \code{agrad}.
+%
+\footnote{For maximum portability, the \code{agrad} library does not
+  depend on C++11 extensions, but even if it did, the \code{auto}
+  mechanism is not powerful to determine the result type here.}
+
+
+
+
+
+\section{Reverse-Mode Automatic Differentiation}
+
+
+\appendix
+
+\section{Functional Derivative API}
+
+The high-level \code{agrad} API for calculating derivatives is defined
+in terms of C++ functionals, i.e., functions operating on functions.%
+%
+\footnote{To simplify notation, \code{Vector<T>} is used as shorthand
+for \code{Eigen::Matrix<T,Eigen::Dynamic,1>} and 
+\code{Matrix<T>} for \code{Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic,1>}.}
+
+\subsection{Simple Derivatives}
+
+If \code{f} is a functor implementing the signature
+%
+\begin{quote}
+\begin{Verbatim}
+template <typename T>
+T operator()(const T& x) const;
+\end{Verbatim}
+\end{quote}
+%
+and \code{x} is a point,
+%
+\begin{quote}
+\begin{Verbatim}
+double x = ...;  
+\end{Verbatim}
+\end{quote}
+%
+then
+%
+\begin{quote}
+\begin{Verbatim}
+double fx, df_dx;  
+agrad::derivative(f,x,fx,df_dx);
+\end{Verbatim}
+\end{quote}
+%
+sets \code{fx} to be the value of \code{f} at \code{x} and
+sets \code{df\_dx} to be the derivative of \code{f} at \code{x}.
+
+
+\subsection{Gradients and Hessians}
+
+If \code{f} is a functor implementing the signature
+%
+\begin{quote}
+\begin{Verbatim}
+template <typename T>
+T operator()(const Vector<T>& x) const;
+\end{Verbatim}
+\end{quote}
+%
+and \code{x} is a vector of inputs,
+%
+\begin{quote}
+\begin{Verbatim}
+Vector<double> x = ...;
+\end{Verbatim}
+\end{quote}
+%
+then
+%
+\begin{quote}
+\begin{Verbatim}
+double fx;    Vector<double> g;
+agrad::gradient(f,x,fx,grad);
+\end{Verbatim}
+\end{quote}
+%
+sets \code{fx} to be the value of \code{f} at \code{x} and sets
+\code{grad} to be the gradient of \code{f} at \code{x} and
+%
+\begin{quote}
+\begin{Verbatim}
+double fx;    Matrix<double> H;
+agrad::hessian(funnel(),x,H);
+\end{Verbatim}
+\end{quote}
+%
+sets \code{fx} to be the value of \code{f} at \code{x} and sets
+\code{H} to be the Hessian of \code{f} at \code{x}.
+
+\subsection{Directional Gradients and Hessians}
+
+There are also directional forms of gradients and Hessians, so that if
+\code{v} is a vector representing a direction, 
+%
+\begin{quote}
+\begin{Verbatim}
+Vector<double> v = ...;
+\end{Verbatim}
+\end{quote}
+%
+then
+%
+\begin{quote}
+\begin{Verbatim}
+double fx;    double grad_v;
+agrad::gradient_dot_vector(f,x,v,fx,grad_v);
+\end{Verbatim}
+\end{quote}
+%
+sets \code{fx} to be the value of \code{f} at \code{x} and sets
+\code{grad\_v} to be the product of the gradient of \code{f} at
+\code{x} and the vector \code{v}, and
+%
+\begin{quote}
+\begin{Verbatim}
+double fx;    Vector<double> H_v;
+agrad::gradient_dot_vector(f,x,v,fx,Hv);
+\end{Verbatim}
+\end{quote}
+%
+sets \code{fx} to be the value of \code{f} at \code{x} and sets
+\code{H\_v} to be the product of the Hessian of \code{f} at
+\code{x} and the vector \code{v}.
+
+
+\subsection{Jacobians}
+
+If \code{f} is a functor implementing the signature
+%
+\begin{quote}
+\begin{Verbatim}
+template <typename T>
+Vector<T> operator()(const Vector<T>& x) const;
+\end{Verbatim}
+\end{quote}
+%
+and \code{x} is an input vector, then
+%
+\begin{quote}
+\begin{Verbatim}
+VectorXd x = ...;
+\end{Verbatim}
+\end{quote}
+%
+then
+%
+\begin{quote}
+\begin{Verbatim}
+VectorXd fx;    MatrixXd J;
+agrad::jacobian(f,x,fx,J);
+\end{Verbatim}
+\end{quote}
+%
+sets \code{fx} to be the value of \code{f} at \code{x} and 
+\code{J} to be the Jacobian of \code{f} at \code{x}.
+
+
+\bibliographystyle{apalike}
+\bibliography{../../bibtex/all}
+
+\end{document}
