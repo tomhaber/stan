@@ -106,8 +106,7 @@
 \end{itemize}
 \item Stan is \myemph{open source} \ {\footnotesize (BSD core C++, GPLv3 interfaces)}
 \\
-{\footnotesize hosted on GitHub; uses Eigen matrix lib, Boost, googletest
-  C++ lib}
+{\footnotesize hosted on GitHub; uses Eigen matrix lib, Boost C++ lib, googletest}
 \end{itemize}
 
 \sld{Who's Using Stan?}
@@ -132,7 +131,7 @@ educational testing, natural language processing}
 \begin{itemize}
 \item 400+ page core language tutorial manual
 \item separate installation, getting started, interface manuals 
-\\ {\footnotesize  RStan, PyStan, CmdStan}
+\\ {\footnotesize  (RStan, PyStan, CmdStan)}
 \item BUGS and JAGS examples (all 3 volumes), 
 \item Gelman and Hill, {\slshape Data Analysis Using Regression and
     Multilevel/Hierarchical Models}
@@ -140,9 +139,46 @@ educational testing, natural language processing}
 \item two other books in progress
 \end{itemize}
 
+\sld{Scaling and Evaluation}
+\begin{itemize}
+\item Types of scaling
+\vspace*{-4pt}
+\begin{itemize}\small
+\item more data
+\item more parameters
+\item \myemph{more complex models}
+\end{itemize}
+\item for MCMC, measure (as function of scaling)
+\vspace*{-4pt}
+\begin{itemize}\small
+\item time to convergence
+\item time per effective sample at mixing
+\item memory usage
+\end{itemize}
+\end{itemize}
+
+\sld{Stan vs. BUGS / JAGS}
+\begin{itemize}
+\item JAGS is the former \myemph{state-of-the-art}, \myemph{black-box} MCMC method
+\\ {\footnotesize (Gibbs with slice sampling; chokes w.\ high posterior correlation)}
+\item Stan (2.0) vs. BUGS on scaling IRT model
+\vspace*{-4pt}
+\begin{itemize}\footnotesize
+\item Stan about \myemph{10 times faster}
+\item Stan memory and time scales linearly
+\item linearly scales with number of question answers
+\end{itemize}
+\vspace*{-3pt}
+\vfill
+\hspace*{-12pt}
+\includegraphics[height=0.6in]{img/irt_scale-eps-converted-to.pdf}
+\includegraphics[height=0.45in]{img/irt-memory-2.png}
+\item Stan can handle problems that choke BUGS and JAGS
+\end{itemize}
+
 \mypart{Part I}{Stan Front End}
 
-\sld{Interface Languages}
+\sld{Platforms and Interfaces}
 
 \begin{itemize}
 \item \myemph{Platforms}
@@ -262,7 +298,8 @@ lp__  -5.33     0.02  0.80  -7.46  -5.04  -4.78   1201     1
 \vspace*{-4pt}
 \begin{itemize}\small
 \item {\slshape content}: declare and define generated quantity
-  variables
+  variables; \\
+includes pseudo-random number generators
 \\
 {\footnotesize (for posterior predictions, event probabilities,
   decision making)}
@@ -278,10 +315,12 @@ lp__  -5.33     0.02  0.80  -7.46  -5.04  -4.78   1201     1
 \item \myemph{\tt\bfseries functions} \ (compiled with model)
 \vspace*{-4pt}
 \begin{itemize}\small
-\item {\slshape content}: declare and define functions
+\item {\slshape content}: declare and define general (recursive) functions
+\\
+{\small (use them elsewhere in program)}
 \item {\slshape execute}: compile with model
 \end{itemize}
-\vspace*{12pt}
+\vspace*{6pt}
 \item Example
 \\[6pt]
 \begin{minipage}[t]{0.8\textwidth}
@@ -289,8 +328,8 @@ lp__  -5.33     0.02  0.80  -7.46  -5.04  -4.78   1201     1
 \begin{Verbatim}
 functions {
 
-  real relative_difference(real x, real y) {
-    return 2 * fabs(x - y) / (fabs(x) + fabs(y));
+  real relative_difference(real u, real v) {
+    return 2 * fabs(u - v) / (fabs(u) + fabs(v));
   }
 
 }
@@ -303,7 +342,7 @@ functions {
 \hspace*{17pt}Variables and expressions are \myemph{strongly, statically typed}.
 \begin{itemize}
 \item \myemph{Primitive}: {\tt\small int}, \ {\tt\small real}
-\item \myemph{Matrix}: {\tt\small matrix[M,N]}, \ {\tt\small vector[N]}, \ {\tt\small row\_vector[M]}
+\item \myemph{Matrix}: {\tt\small matrix[M,N]}, \ {\tt\small vector[M]}, \ {\tt\small row\_vector[N]}
 \item \myemph{Bounded}: primitive or matrix, with 
 \\ {\tt\small <lower=L>}, \ {\tt\small <upper=U>}, \ {\tt\small <lower=L,upper=U>}
 \item \myemph{Constrained Vectors}: {\tt\small simplex[K]}, \ {\tt\small
@@ -386,14 +425,15 @@ functions {
 \sld{Built-in Math Functions}
 
 \begin{itemize}
-\item All built-in \myemph{C++ functions}
+\item All built-in \myemph{C++ functions and operators}
 \\
 {\footnotesize C math, TR1, C++11, including all trig, pow, and
-  special log1m, etc.}
+  special log1m, erf, erfc, fma, atan2, etc.}
 \item Extensive library of \myemph{statistical functions}
 \\
 {\footnotesize e.g., softmax,
-log gamma and digamma functions, beta functions, Bessel functions}
+log gamma and digamma functions, beta functions, Bessel functions of
+ and second kind, etc.}
 %
 \item Efficient, arithmetically stable \myemph{compound functions}
 \\
@@ -406,15 +446,15 @@ exponentials, log inverse logit}
 \begin{itemize}
 \item \myemph{Basic arithmetic}: all arithmetic operators
 \item \myemph{Elementwise arithmetic}: vectorized operations
-\item \myemph{Solvers}: matrix left and right division, (log) determinant,
+\item \myemph{Solvers}: matrix division, (log) determinant,
 inverse 
 \item \myemph{Decompositions}: QR, Eigenvalues and Eigenvectors, 
 \\
 Cholesky factorization, singular value decomposition
 \item \myemph{Compound Operations}: quadratic forms, variance scaling
-\vfill
 \item \myemph{Ordering, Slicing, Broadcasting}: sort, rank, block, rep
 \item \myemph{Reductions}: sum, product, norms
+\item \myemph{Specializations}: triangular, positive-definite, etc.
 \end{itemize}
 
 \sld{Distribution Library}
@@ -479,7 +519,7 @@ shrinkage to (expansion from) unit matrix}
 \begin{itemize}\small
 \item number of steps
 \\
-{\footnotesize aka no-U-turn sampler; aka NUTS}
+{\footnotesize aka no-U-turn sampler (NUTS)}
 \end{itemize}
 %
 \item \myemph{Initialization} user-specified or random unconstrained
@@ -489,17 +529,17 @@ shrinkage to (expansion from) unit matrix}
 \sld{Posterior Inference}
 
 \begin{itemize}
-\item Generated quantities block for predictions, decisions,
-  and event probabilities
-\item Extractors for samples in RStan and PyStan
-\item Coda-like posterior summary
+\item Generated quantities block for \myemph{inference}
+\\ {\footnotesize (predictions, decisions, and event probabilities)}
+\item \myemph{Extractors} for samples in RStan and PyStan
+\item Coda-like \myemph{posterior summary}
 \vspace*{-4pt}
 \begin{itemize}\small
 \item posterior mean w.\ standard error, standard deviation, quantiles
 \item split-$\hat{R}$ multi-chain convergence diagnostic (Gelman and ...)
 \item multi-chain effective sample size estimation (FFT algorithm)
 \end{itemize}
-\item Model comparison with WAIC
+\item Model comparison with \myemph{WAIC}
 \\
 {\footnotesize (internal log likelihoods; external cross-sample statistics)}
 \end{itemize}
@@ -507,18 +547,18 @@ shrinkage to (expansion from) unit matrix}
 \sld{Penalized MLE}
 
 \begin{itemize}
-\item Posterior mode finding via BFGS optimization
+\item Posterior \myemph{mode finding} via BFGS optimization
 \\ {\footnotesize (uses model gradient, efficiently approximates Hessian)}
-\item Disables Jacobians adjusting for parameter transforms
+\item \myemph{Disables Jacobians} for parameter inverse transforms
 \item Models, data, initialization as in MCMC
 \vfill
-\item Near Future:
+\item \myemph{Very Near Future}
 \vspace*{-4pt}
 \begin{itemize}\small
-\item  Standard errors on unconstrained scale
+\item  \myemph{Standard errors} on unconstrained scale
 \\
 {\footnotesize  (estimated using curvature of penalized log likelihood function}
-\item Standard errors on constrained scale)
+\item Standard errors \myemph{on constrained scale})
 \\
 {\footnotesize  (sample unconstrained approximation and inverse transform)}
 \item L-BFGS optimizer
@@ -528,21 +568,21 @@ shrinkage to (expansion from) unit matrix}
 \sld{Stan as a Research Tool}
 
 \begin{itemize}
-\item Stan can be used to explore statistical algorithms
-\item Models transformed to have support on $\mathbb{R}^n$
+\item Stan can be used to \myemph{explore algorithms}
+\item Models transformed to \myemph{unconstrained support} on $\mathbb{R}^n$
 \item Once a model is compiled, have
 \vspace*{-4pt}
 \begin{itemize}\small
-\item log probability, gradient, and Hessian
+\item \myemph{log probability, gradient, and Hessian}
 \item data I/O and parameter initialization
 \item model provides variable names and dimensionalities
 \item transforms to and from constrained representation 
   \\ {\footnotesize (with or without Jacobian)}
 \end{itemize}
-\item Future:
+\item {Very Near Future:}
 \vspace*{-4pt}
 \begin{itemize}\small
-\item second- and higher-order derivatives via auto diff
+\item second- and \myemph{higher-order derivatives} via auto-diff
 \end{itemize}
 \end{itemize}
 
@@ -599,7 +639,7 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \vspace*{-3pt}
 \begin{itemize}\small
 \item leapfrog integrator \myemph{generates proposal}
-\item \myemph{Metropolis accept} step ensures detailed balance
+\item \myemph{Metropolis accept} step ensures \myemph{detailed balance}
 \end{itemize}
 \vfill
 \item \myemph{Balancing act}: small $\epsilon$ has low error, requires many steps
@@ -644,7 +684,7 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \item automatically adapts to varying curvature
 \item no need to estimate mass matrix
 \item need to regularize Hessian-based curvature estimate
-\\ {\footnotesize (Betancourt arXiv; SoftAbs metric)}
+\\ {\footnotesize (Betancourt {\slshape arXiv}; SoftAbs metric)}
 \end{itemize}
 \end{itemize}
 
@@ -657,7 +697,7 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \item Double number of leapfrog steps each move (\myemph{binary tree})
 \item Stop when a subtree makes a \myemph{U-turn}
 \\ {\footnotesize (rare: throw away second half if not end to end U-turn)}
-\item \myemph{Slice sample} points along last segment of path
+\item \myemph{Slice sample} points along last branch of tree
 \item \myemph{Generalized} to Riemannian-manifold HMC
 \\ {\footnotesize (Betancourt, arXiv)}
 \end{itemize}
@@ -671,7 +711,7 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \item Code \myemph{partial derivatives} for basic operations
 \item Function evaluation builds up \myemph{expression tree}
 \item Dynamic program propagates \myemph{chain rule} in reverse pass
-\item \myemph{Object-oriented} custom partial propagation
+\item Extensible w.\ \myemph{object-oriented} custom partial propagation
 \item Arena-based \myemph{memory management}
 \\ {\footnotesize (customize \code{operator new})}
 \end{itemize}
@@ -680,8 +720,14 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \begin{itemize}
 \item Templated \myemph{C++ overload} for all functions
 \item Code \myemph{partial derivatives} for basic operations
-\item Function evaluation propagates chain rule forward
-\item Nest reverse-mode in forward for higher-order
+\item Function evaluation propagates \myemph{chain rule} forward
+\item Nest reverse-mode in forward for \myemph{higher-order}
+\item \myemph{Jacobians}
+\vspace*{-4pt}
+\begin{itemize}\small
+\item Rerun propagation pass in reverse mode
+\item Rerun forward construction with forward mode
+\end{itemize}
 \vfill
 \item Faster autodiff rewrite coming in six months to one year
 \end{itemize}
@@ -700,7 +746,7 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \\ {\footnotesize (for SoftAbs RHMC)}
 \end{itemize}
 \item Functions to differentiate coded as functors (or pointers)
-\\ {\footnotesize (use bind or lambda)}
+\\ {\footnotesize (enables dynamic C++ bind or lambda)}
 \end{itemize}
 
 \sld{Variable Transforms}
@@ -737,8 +783,8 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
   actions)}
 \item C++ model class \myemph{code generation} from AST
 \\ {\footnotesize (Boost Variant)}
-\item C++ code compilation
-\item Dynamic linking for RStan, PyStan
+\item C++ code \myemph{compilation}
+\item \myemph{Dynamic linking} for RStan, PyStan
 \end{itemize}
 
 \sld{Coding Probability Functions}
@@ -756,9 +802,10 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \frac{\textstyle y_n - \mu}{\textstyle 2\sigma^2}
 \end{eqnarray*}
 }
-\item \myemph{expression templates} to broadcast and cache scalars
+\item recursive \myemph{expression templates} to broadcast and cache scalars,
+generalize containers (arrays, matrices, vectors)
 \item \myemph{traits} metaprogram to \myemph{drop constants} (e.g., $-\log
-  \sqrt{2 \pi}$) and calculate return types
+  \sqrt{2 \pi}$) and calculate intermediate and return types
 \end{itemize}
 
 \sld{Models with Discrete Parameters}
@@ -768,17 +815,19 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \item \myemph{Marginalize out} discrete parameters
 \item Efficient sampling due to \myemph{Rao-Blackwellization}
 \item Inference straightforward with expectations
-\item \myemph{Difficult} for many users
+\vspace*{12pt}
+\item Too \myemph{difficult} for many of our users
+\\
+{\small (exploring encapsulation options)}
 \end{itemize}
 
 \sld{Models with Missing Data}
 \begin{itemize}
 \item In principle, missing data just \myemph{additional parameters}
 \item In practice, how to declare? 
-\vspace*{-3pt}
-\begin{itemize}\small
-\item observed data as data variables
-\item missing data as parameters
+\begin{itemize}
+\item \myemph{observed} data as data variables
+\item \myemph{missing} data as parameters
 \item combine into single vector 
 \\ {\footnotesize (in transformed parameters or local in model)}
 \end{itemize}
@@ -793,7 +842,15 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \item Auto-diff coupled Jacobian for stiff systems
 \vfill
 \item C++ prototype integrated for large PK/PD models
-\\ {\footnotesize (project with Novartis for clinical trial)}
+\vspace*{-4pt}
+\begin{itemize}\footnotesize
+\item 
+Project with Novartis: 
+  longitudinal clinical trial w.\ multiple drugs, dosings, placebo control,
+  hierarchical model of patient-level effects, meta-analysis
+\item
+Collaborators: Frederic Bois, Amy Racine, Sebastian Weber
+\end{itemize}
 \end{itemize}
 
 \sld{L-BFGS Optimizer}
@@ -816,6 +873,8 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 
 \sld{Riemannian Manifold HMC}
 \begin{itemize}
+\item \myemph{NUTS} generalized to RHMC
+\\ {\footnotesize (Betancourt {\slshape arXiv} paper)}
 \item \myemph{SoftAbs} metric
 \vspace*{-4pt}
 \begin{itemize}\footnotesize
@@ -836,8 +895,8 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \item Operates through \myemph{contact manifold}
 \item System relaxes more naturally between energy levels
 \vfill
-\item Prototypes evaluated
-\item Betancourt paper on {\slshape arXiv} (for geometers)
+\item Prototype complete
+\\ {\small (Betancourt paper on {\slshape arXiv}; for geometers)}
 \end{itemize}
 
 \sld{Marginal Maximum Likelihood}
