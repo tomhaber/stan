@@ -349,7 +349,7 @@ TEST(StanIoMcmcWriter, write_diagnostic_params) {
   EXPECT_EQ("", output.str()); 
 }
 
-TEST(StanIoMcmcWriter, write_timing) {
+TEST(StanIoMcmcWriter, write_timing_recorder) {
   
   // Model
   std::fstream data_stream("", std::fstream::in);
@@ -453,4 +453,127 @@ TEST(StanIoMcmcWriter, write_timing) {
   
   EXPECT_EQ("", message_stream.str());
   EXPECT_EQ("", output.str());
+}
+
+TEST(StanIoMcmcWriter, write_timing) {
+  
+  // Model
+  std::fstream data_stream("", std::fstream::in);
+  stan::io::dump data_var_context(data_stream);
+  data_stream.close();
+  
+  std::stringstream output;
+  io_example_model_namespace::io_example_model model(data_var_context, &output);
+  
+  // Sample
+  Eigen::VectorXd real(2);
+  real(0) = 1.43;
+  real(1) = 2.71;
+  
+  double log_prob = 3.14;
+  double accept_stat = 0.84;
+  
+  stan::mcmc::sample sample(real, log_prob, accept_stat);
+  
+  // Sampler
+  typedef boost::ecuyer1988 rng_t;
+  rng_t base_rng(0);
+  
+  stan::mcmc::adapt_diag_e_nuts<io_example_model_namespace::io_example_model, rng_t> sampler(model, base_rng, 0);
+  sampler.seed(real);
+  
+  // Writer
+  std::stringstream sample_stream;
+  std::stringstream diagnostic_stream;
+  std::stringstream message_stream;
+  
+  stan::common::recorder::csv sample_recorder(&sample_stream, "# ");
+  stan::common::recorder::csv diagnostic_recorder(&diagnostic_stream, "# ");
+  stan::common::recorder::messages message_recorder(&message_stream, "# ");
+
+  stan::io::mcmc_writer<io_example_model_namespace::io_example_model,
+                        stan::common::recorder::csv,
+                        stan::common::recorder::csv,
+                        stan::common::recorder::messages> 
+    writer(sample_recorder, diagnostic_recorder, message_recorder);
+  
+  double warm = 0.193933;
+  double sampling = 0.483830;
+
+  writer.write_timing(warm, sampling);
+  
+  std::stringstream expected_stream;
+  expected_stream << std::endl;
+  expected_stream << "#  Elapsed Time: " << warm << " seconds (Warm-up)" << std::endl;
+  expected_stream << "#                " << sampling << " seconds (Sampling)" << std::endl;
+  expected_stream << "#                " << warm + sampling << " seconds (Total)" << std::endl;
+  expected_stream << std::endl;
+  
+  std::string line;
+  std::string expected_line;
+
+  // Line 1
+  std::getline(expected_stream, expected_line);
+  
+  std::getline(sample_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  std::getline(diagnostic_stream, line);
+  EXPECT_EQ(expected_line, line);
+
+  std::getline(message_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+
+  // Line 2
+  std::getline(expected_stream, expected_line);
+  
+  std::getline(sample_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  std::getline(diagnostic_stream, line);
+  EXPECT_EQ(expected_line, line);
+
+  std::getline(message_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  // Line 3
+  std::getline(expected_stream, expected_line);
+  
+  std::getline(sample_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  std::getline(diagnostic_stream, line);
+  EXPECT_EQ(expected_line, line);
+
+  std::getline(message_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  // Line 4
+  std::getline(expected_stream, expected_line);
+  
+  std::getline(sample_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  std::getline(diagnostic_stream, line);
+  EXPECT_EQ(expected_line, line);
+
+  std::getline(message_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  // Line 5
+  std::getline(expected_stream, expected_line);
+  
+  std::getline(sample_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  std::getline(diagnostic_stream, line);
+  EXPECT_EQ(expected_line, line);
+  
+  std::getline(message_stream, line);
+  EXPECT_EQ(expected_line, line);
+
+
+  // EXPECT_EQ("", message_stream.str());
+  // EXPECT_EQ("", output.str());
 }
