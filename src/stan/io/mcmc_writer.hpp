@@ -267,7 +267,6 @@ namespace stan {
       void write_timing(double warmDeltaT, double sampleDeltaT) {
         write_timing(warmDeltaT, sampleDeltaT, sample_recorder_);
         write_timing(warmDeltaT, sampleDeltaT, diagnostic_recorder_);
-        write_timing(warmDeltaT, sampleDeltaT, message_recorder_);
       }
             
     };

@@ -521,7 +521,7 @@ TEST(StanIoMcmcWriter, write_timing) {
   std::getline(diagnostic_stream, line);
   EXPECT_EQ(expected_line, line);
 
-  std::getline(message_stream, line);
+  line = message_stream.str();
   EXPECT_EQ("", line);
   
 
@@ -534,7 +534,7 @@ TEST(StanIoMcmcWriter, write_timing) {
   std::getline(diagnostic_stream, line);
   EXPECT_EQ(expected_line, line);
 
-  std::getline(message_stream, line);
+  line = message_stream.str();
   EXPECT_EQ("", line);
   
   // Line 3
@@ -546,7 +546,7 @@ TEST(StanIoMcmcWriter, write_timing) {
   std::getline(diagnostic_stream, line);
   EXPECT_EQ(expected_line, line);
 
-  std::getline(message_stream, line);
+  line = message_stream.str();
   EXPECT_EQ("", line);
   
   // Line 4
@@ -558,7 +558,7 @@ TEST(StanIoMcmcWriter, write_timing) {
   std::getline(diagnostic_stream, line);
   EXPECT_EQ(expected_line, line);
 
-  std::getline(message_stream, line);
+  line = message_stream.str();
   EXPECT_EQ("", line);
   
   // Line 5
@@ -570,7 +570,7 @@ TEST(StanIoMcmcWriter, write_timing) {
   std::getline(diagnostic_stream, line);
   EXPECT_EQ(expected_line, line);
   
-  std::getline(message_stream, line);
+  line = message_stream.str();
   EXPECT_EQ("", line);
 
   EXPECT_EQ("", output.str());
