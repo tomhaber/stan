@@ -259,7 +259,8 @@ namespace stan {
 
       
       /**
-       * Print timing information to all streams
+       * Print timing information to sample and diagnostic recorders,
+       * not to message recorder and message stream
        *
        * @param warmDeltaT warmup time (sec)
        * @param sampleDeltaT sample time (sec)
