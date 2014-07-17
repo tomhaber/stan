@@ -33,7 +33,6 @@ namespace stan {
       }
     };
     
-
     template<class T>
     struct push_back_state_and_time {
       std::vector< std::vector<T> >& m_states;
@@ -92,17 +91,13 @@ namespace stan {
       for (size_t n = 0; n < t.size(); n++)
         times[n+1] = t[n];
       
-      T times_start = 0.0;
-      T times_end = t[t.size()-1];
       T dt = t[0];
-
 
       vector<vector<T> > x_vec;
       vector<T> t_vec;
       push_back_state_and_time<T> obs(x_vec, t_vec);
 
       harm_osc<T> harm_osc(gamma);
-
 
       integrate_times(make_dense_output(1.0e-6, 1.0e-6, 
                                         runge_kutta_dopri5< vector<T>,
