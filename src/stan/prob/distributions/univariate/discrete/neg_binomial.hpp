@@ -5,14 +5,17 @@
 #include <boost/random/variate_generator.hpp>
 
 #include <boost/math/special_functions/digamma.hpp>
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
+#include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/traits.hpp>
 #include <stan/prob/constants.hpp>
 #include <stan/prob/internal_math.hpp>
-
+#include <stan/prob/distributions/univariate/continuous/gamma.hpp>
+#include <stan/prob/distributions/univariate/discrete/poisson.hpp>
 #include <stan/math/functions/binomial_coefficient_log.hpp>
 
 namespace stan {
@@ -44,24 +47,16 @@ namespace stan {
         return 0.0;
       
       double logp(0.0);
-      if (!check_nonnegative(function, n, "Failures variable", &logp))
-        return logp;
-      if (!check_finite(function, alpha, "Shape parameter", &logp))
-        return logp;
-      if (!check_positive(function, alpha, "Shape parameter", &logp))
-        return logp;
-      if (!check_finite(function, beta, "Inverse scale parameter",
-                        &logp))
-        return logp;
-      if (!check_positive(function, beta, "Inverse scale parameter", 
-                          &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   n,alpha,beta,
-                                   "Failures variable",
-                                   "Shape parameter","Inverse scale parameter",
-                                   &logp)))
-        return logp;
+      check_nonnegative(function, n, "Failures variable", &logp);
+      check_finite(function, alpha, "Shape parameter", &logp);
+      check_positive(function, alpha, "Shape parameter", &logp);
+      check_finite(function, beta, "Inverse scale parameter", &logp);
+      check_positive(function, beta, "Inverse scale parameter", &logp);
+      check_consistent_sizes(function,
+                             n,alpha,beta,
+                             "Failures variable",
+                             "Shape parameter","Inverse scale parameter",
+                             &logp);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_shape,T_inv_scale>::value)
@@ -203,27 +198,16 @@ namespace stan {
       double P(1.0);
           
       // Validate arguments
-      if (!check_finite(function, alpha, "Shape parameter", &P))
-        return P;
-          
-      if (!check_positive(function, alpha, "Shape parameter", &P))
-        return P;
-          
-      if (!check_finite(function, beta, "Inverse scale parameter",
-                        &P))
-        return P;
-          
-      if (!check_positive(function, beta, "Inverse scale parameter", 
-                          &P))
-        return P;
-          
-      if (!(check_consistent_sizes(function,
-                                   n, alpha, beta,
-                                   "Failures variable",
-                                   "Shape parameter",
-                                   "Inverse scale parameter",
-                                   &P)))
-        return P;
+      check_finite(function, alpha, "Shape parameter", &P);
+      check_positive(function, alpha, "Shape parameter", &P);
+      check_finite(function, beta, "Inverse scale parameter", &P);
+      check_positive(function, beta, "Inverse scale parameter", &P);
+      check_consistent_sizes(function,
+                             n, alpha, beta,
+                             "Failures variable",
+                             "Shape parameter",
+                             "Inverse scale parameter",
+                             &P);
           
       // Wrap arguments in vector views
       VectorView<const T_n> n_vec(n);
@@ -240,11 +224,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_shape, T_inv_scale> 
         operands_and_partials(alpha, beta);
-          
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris,
-                0.0);
           
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -355,21 +334,16 @@ namespace stan {
       double P(0.0);
           
       // Validate arguments
-      if (!check_finite(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!check_positive(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!check_finite(function, beta, "Inverse scale parameter", &P))
-        return P;
-      if (!check_positive(function, beta, "Inverse scale parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function,
-                                   n, alpha, beta,
-                                   "Failures variable",
-                                   "Shape parameter",
-                                   "Inverse scale parameter",
-                                   &P)))
-        return P;
+      check_finite(function, alpha, "Shape parameter", &P);
+      check_positive(function, alpha, "Shape parameter", &P);
+      check_finite(function, beta, "Inverse scale parameter", &P);
+      check_positive(function, beta, "Inverse scale parameter", &P);
+      check_consistent_sizes(function,
+                             n, alpha, beta,
+                             "Failures variable",
+                             "Shape parameter",
+                             "Inverse scale parameter",
+                             &P);
           
       // Wrap arguments in vector views
       VectorView<const T_n> n_vec(n);
@@ -386,11 +360,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_shape, T_inv_scale> 
         operands_and_partials(alpha, beta);
-          
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris,
-                0.0);
           
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -482,21 +451,16 @@ namespace stan {
       double P(0.0);
           
       // Validate arguments
-      if (!check_finite(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!check_positive(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!check_finite(function, beta, "Inverse scale parameter", &P))
-        return P;
-      if (!check_positive(function, beta, "Inverse scale parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function,
-                                   n, alpha, beta,
-                                   "Failures variable",
-                                   "Shape parameter",
-                                   "Inverse scale parameter",
-                                   &P)))
-        return P;
+      check_finite(function, alpha, "Shape parameter", &P);
+      check_positive(function, alpha, "Shape parameter", &P);
+      check_finite(function, beta, "Inverse scale parameter", &P);
+      check_positive(function, beta, "Inverse scale parameter", &P);
+      check_consistent_sizes(function,
+                             n, alpha, beta,
+                             "Failures variable",
+                             "Shape parameter",
+                             "Inverse scale parameter",
+                             &P);
           
       // Wrap arguments in vector views
       VectorView<const T_n> n_vec(n);
@@ -513,11 +477,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_shape, T_inv_scale> 
         operands_and_partials(alpha, beta);
-          
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris,
-                0.0);
           
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -596,11 +555,19 @@ namespace stan {
                      RNG& rng) {
       using boost::variate_generator;
       using boost::random::negative_binomial_distribution;
-      variate_generator<RNG&, negative_binomial_distribution<> >
-        neg_binomial_rng(rng, 
-                         negative_binomial_distribution<>(alpha,
-                                                          beta / (beta + 1)));
-      return neg_binomial_rng();
+
+      static const char* function = "stan::prob::neg_binomial_rng(%1%)";
+
+      using stan::math::check_finite;      
+      using stan::math::check_positive;
+
+      check_finite(function, alpha, "Shape parameter", (double*)0);
+      check_positive(function, alpha, "Shape parameter", (double*)0);
+      check_finite(function, beta, "Inverse scale parameter", (double*)0);
+      check_positive(function, beta, "Inverse scale parameter", (double*)0);
+
+      return stan::prob::poisson_rng(stan::prob::gamma_rng(alpha, beta,
+                                                           rng),rng);
     }
   }
 }

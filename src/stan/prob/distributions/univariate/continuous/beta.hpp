@@ -5,9 +5,10 @@
 #include <boost/random/gamma_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
 #include <stan/math/functions/log1m.hpp>
+#include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
@@ -71,26 +72,18 @@ namespace stan {
       double logp(0.0);
       
       // validate args (here done over var, which should be OK)
-      if (!check_finite(function, alpha, "First shape parameter", &logp))
-        return logp;
-      if (!check_positive(function, alpha, "First shape parameter", &logp))
-        return logp;
-      if (!check_finite(function, beta, "Second shape parameter", &logp))
-        return logp;
-      if (!check_positive(function, beta, "Second shape parameter", &logp))
-        return logp;
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,alpha,beta,
-                                   "Random variable","First shape parameter",
-                                   "Second shape parameter",
-                                   &logp)))
-        return logp;
-      if (!check_nonnegative(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_less_or_equal(function, y, 1,"Random variable", &logp))
-        return logp;
+      check_finite(function, alpha, "First shape parameter", &logp);
+      check_positive(function, alpha, "First shape parameter", &logp);
+      check_finite(function, beta, "Second shape parameter", &logp);
+      check_positive(function, beta, "Second shape parameter", &logp);
+      check_not_nan(function, y, "Random variable", &logp);
+      check_consistent_sizes(function,
+                             y,alpha,beta,
+                             "Random variable","First shape parameter",
+                             "Second shape parameter",
+                             &logp);
+      check_nonnegative(function, y, "Random variable", &logp);
+      check_less_or_equal(function, y, 1,"Random variable", &logp);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_scale_succ,T_scale_fail>::value)
@@ -242,24 +235,16 @@ namespace stan {
       
       double P(1.0);
         
-      if (!check_finite(function, alpha, "First shape parameter", &P))
-        return P;
-      if (!check_positive(function, alpha, "First shape parameter", &P))
-        return P;
-      if (!check_finite(function, beta, "Second shape parameter", &P))
-        return P;
-      if (!check_positive(function, beta, "Second shape parameter", &P))
-        return P;
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, alpha, beta,
-                                   "Random variable", "Shape parameter", 
-                                   "Scale Parameter", &P)))
-        return P;
-      if (!check_nonnegative(function, y, "Random variable", &P))
-        return P;
-      if (!check_less_or_equal(function, y, 1,"Random variable", &P))
-        return P;
+      check_finite(function, alpha, "First shape parameter", &P);
+      check_positive(function, alpha, "First shape parameter", &P);
+      check_finite(function, beta, "Second shape parameter", &P);
+      check_positive(function, beta, "Second shape parameter", &P);
+      check_not_nan(function, y, "Random variable", &P);
+      check_consistent_sizes(function, y, alpha, beta,
+                             "Random variable", "Shape parameter", 
+                             "Scale Parameter", &P);
+      check_nonnegative(function, y, "Random variable", &P);
+      check_less_or_equal(function, y, 1,"Random variable", &P);
 
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -269,10 +254,6 @@ namespace stan {
 
       agrad::OperandsAndPartials<T_y, T_scale_succ, T_scale_fail> 
         operands_and_partials(y, alpha, beta);
-
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
 
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -402,24 +383,16 @@ namespace stan {
       
       double cdf_log(0.0);
         
-      if (!check_finite(function, alpha, "First shape parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, alpha, "First shape parameter", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, beta, "Second shape parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, beta, "Second shape parameter", &cdf_log))
-        return cdf_log;
-      if (!check_not_nan(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_nonnegative(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_less_or_equal(function, y, 1,"Random variable", &cdf_log))
-        return cdf_log;
-      if (!(check_consistent_sizes(function, y, alpha, beta,
-                                   "Random variable", "Shape parameter", 
-                                   "Scale Parameter", &cdf_log)))
-        return cdf_log;
+      check_finite(function, alpha, "First shape parameter", &cdf_log);
+      check_positive(function, alpha, "First shape parameter", &cdf_log);
+      check_finite(function, beta, "Second shape parameter", &cdf_log);
+      check_positive(function, beta, "Second shape parameter", &cdf_log);
+      check_not_nan(function, y, "Random variable", &cdf_log);
+      check_nonnegative(function, y, "Random variable", &cdf_log);
+      check_less_or_equal(function, y, 1,"Random variable", &cdf_log);
+      check_consistent_sizes(function, y, alpha, beta,
+                             "Random variable", "Shape parameter", 
+                             "Scale Parameter", &cdf_log);
       
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -430,10 +403,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_scale_succ, T_scale_fail> 
         operands_and_partials(y, alpha, beta);
 
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-      
       // Compute CDF and its gradients
       using boost::math::ibeta;
       using boost::math::ibeta_derivative;
@@ -535,24 +504,16 @@ namespace stan {
       
       double ccdf_log(0.0);
         
-      if (!check_finite(function, alpha, "First shape parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, alpha, "First shape parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, beta, "Second shape parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, beta, "Second shape parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_not_nan(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_nonnegative(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_less_or_equal(function, y, 1,"Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!(check_consistent_sizes(function, y, alpha, beta,
-                                   "Random variable", "Shape parameter", 
-                                   "Scale Parameter", &ccdf_log)))
-        return ccdf_log;
+      check_finite(function, alpha, "First shape parameter", &ccdf_log);
+      check_positive(function, alpha, "First shape parameter", &ccdf_log);
+      check_finite(function, beta, "Second shape parameter", &ccdf_log);
+      check_positive(function, beta, "Second shape parameter", &ccdf_log);
+      check_not_nan(function, y, "Random variable", &ccdf_log);
+      check_nonnegative(function, y, "Random variable", &ccdf_log);
+      check_less_or_equal(function, y, 1,"Random variable", &ccdf_log);
+      check_consistent_sizes(function, y, alpha, beta,
+                             "Random variable", "Shape parameter", 
+                             "Scale Parameter", &ccdf_log);
       
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -563,10 +524,6 @@ namespace stan {
       agrad::OperandsAndPartials<T_y, T_scale_succ, T_scale_fail> 
         operands_and_partials(y, alpha, beta);
 
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials
-                + operands_and_partials.nvaris, 0.0);
-      
       // Compute CDF and its gradients
       using boost::math::ibeta;
       using boost::math::ibeta_derivative;
@@ -648,6 +605,17 @@ namespace stan {
              RNG& rng) {
       using boost::variate_generator;
       using boost::random::gamma_distribution;
+      // Error checks
+      static const char* function = "stan::prob::beta_rng(%1%)";
+
+      using stan::math::check_positive;
+      using stan::math::check_finite;
+        
+      check_finite(function, alpha, "First shape parameter", (double*)0);
+      check_positive(function, alpha, "First shape parameter", (double*)0);
+      check_finite(function, beta, "Second shape parameter", (double*)0);
+      check_positive(function, beta, "Second shape parameter", (double*)0);
+
       variate_generator<RNG&, gamma_distribution<> >
         rng_gamma_alpha(rng, gamma_distribution<>(alpha, 1.0));
       variate_generator<RNG&, gamma_distribution<> >

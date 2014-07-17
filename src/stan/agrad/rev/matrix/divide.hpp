@@ -4,10 +4,8 @@
 #include <vector>
 #include <stan/math/matrix/Eigen.hpp>
 #include <stan/math/matrix/typedefs.hpp>
-#include <stan/math/matrix/validate_multiplicable.hpp>
-#include <stan/math/matrix/validate_square.hpp>
 #include <stan/agrad/rev/var.hpp>
-#include <stan/agrad/rev/operator_division.hpp>
+#include <stan/agrad/rev/operators/operator_division.hpp>
 #include <stan/agrad/rev/matrix/to_var.hpp>
 #include <stan/agrad/rev/matrix/typedefs.hpp>
 

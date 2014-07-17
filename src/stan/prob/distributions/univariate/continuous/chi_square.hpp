@@ -4,12 +4,15 @@
 #include <boost/random/chi_squared_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
+#include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
 #include <stan/prob/traits.hpp>
+#include <stan/prob/internal_math.hpp>
 
 namespace stan {
 
@@ -53,19 +56,14 @@ namespace stan {
       using stan::math::value_of;
       
       double logp(0.0);
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_nonnegative(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &logp))
-        return logp;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,
-                                   "Random variable","Degrees of freedom parameter",
-                                   &logp)))
-        return logp;
+      check_not_nan(function, y, "Random variable", &logp);
+      check_nonnegative(function, y, "Random variable", &logp);
+      check_finite(function, nu, "Degrees of freedom parameter", &logp);
+      check_positive(function, nu, "Degrees of freedom parameter", &logp);
+      check_consistent_sizes(function,
+                             y,nu,
+                             "Random variable","Degrees of freedom parameter",
+                             &logp);
     
       
       // set up template expressions wrapping scalars into vector views
@@ -170,19 +168,14 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu))) 
         return cdf;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_nonnegative(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &cdf))
-        return cdf;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &cdf))
-        return cdf;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,
-                                   "Random variable","Degrees of freedom parameter",
-                                   &cdf)))
-        return cdf;
+      check_not_nan(function, y, "Random variable", &cdf);
+      check_nonnegative(function, y, "Random variable", &cdf);
+      check_finite(function, nu, "Degrees of freedom parameter", &cdf);
+      check_positive(function, nu, "Degrees of freedom parameter", &cdf);
+      check_consistent_sizes(function,
+                             y,nu,
+                             "Random variable","Degrees of freedom parameter",
+                             &cdf);
 
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -191,10 +184,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_y, T_dof> 
         operands_and_partials(y, nu);
-          
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
           
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -281,19 +270,14 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu))) 
         return cdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_nonnegative(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &cdf_log))
-        return cdf_log;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,
-                                   "Random variable","Degrees of freedom parameter",
-                                   &cdf_log)))
-        return cdf_log;
+      check_not_nan(function, y, "Random variable", &cdf_log);
+      check_nonnegative(function, y, "Random variable", &cdf_log);
+      check_finite(function, nu, "Degrees of freedom parameter", &cdf_log);
+      check_positive(function, nu, "Degrees of freedom parameter", &cdf_log);
+      check_consistent_sizes(function,
+                             y,nu,
+                             "Random variable","Degrees of freedom parameter",
+                             &cdf_log);
 
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -302,10 +286,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_y, T_dof> 
         operands_and_partials(y, nu);
-          
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
           
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -385,19 +365,14 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu))) 
         return ccdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_nonnegative(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &ccdf_log))
-        return ccdf_log;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,
-                                   "Random variable","Degrees of freedom parameter",
-                                   &ccdf_log)))
-        return ccdf_log;
+      check_not_nan(function, y, "Random variable", &ccdf_log);
+      check_nonnegative(function, y, "Random variable", &ccdf_log);
+      check_finite(function, nu, "Degrees of freedom parameter", &ccdf_log);
+      check_positive(function, nu, "Degrees of freedom parameter", &ccdf_log);
+      check_consistent_sizes(function,
+                             y,nu,
+                             "Random variable","Degrees of freedom parameter",
+                             &ccdf_log);
 
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -406,10 +381,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_y, T_dof> 
         operands_and_partials(y, nu);
-          
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
           
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -477,6 +448,16 @@ namespace stan {
                    RNG& rng) {
       using boost::variate_generator;
       using boost::random::chi_squared_distribution;
+
+      static const char* function = "stan::prob::chi_square_rng(%1%)";
+
+      using stan::math::check_positive;
+      using stan::math::check_finite;
+      
+      check_finite(function, nu, "Degrees of freedom parameter", (double*)0);
+      check_positive(function, nu, "Degrees of freedom parameter", (double*)0);
+    
+
       variate_generator<RNG&, chi_squared_distribution<> >
         chi_square_rng(rng, chi_squared_distribution<>(nu));
       return chi_square_rng();

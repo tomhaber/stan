@@ -5,9 +5,12 @@
 #include <boost/random/variate_generator.hpp>
 
 #include <limits>
+#include <boost/math/special_functions/fpclassify.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
+#include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/traits.hpp>
@@ -41,19 +44,15 @@ namespace stan {
       double logp(0.0);
 
       // validate args
-      if (!check_nonnegative(function, n, "Random variable", &logp))
-        return logp;
-      if (!check_not_nan(function, lambda,
-                         "Rate parameter", &logp))
-        return logp;
-      if (!check_nonnegative(function, lambda,
-                             "Rate parameter", &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   n,lambda,
-                                   "Random variable","Rate parameter",
-                                   &logp)))
-        return logp;
+      check_nonnegative(function, n, "Random variable", &logp);
+      check_not_nan(function, lambda,
+                    "Rate parameter", &logp);
+      check_nonnegative(function, lambda,
+                        "Rate parameter", &logp);
+      check_consistent_sizes(function,
+                             n,lambda,
+                             "Random variable","Rate parameter",
+                             &logp);
       
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_rate>::value)
@@ -65,7 +64,7 @@ namespace stan {
       size_t size = max_size(n, lambda);
 
       for (size_t i = 0; i < size; i++)
-        if (std::isinf(lambda_vec[i]))
+        if (boost::math::isinf(lambda_vec[i]))
           return LOG_ZERO;
       for (size_t i = 0; i < size; i++)
         if (lambda_vec[i] == 0 && n_vec[i] != 0)
@@ -128,16 +127,13 @@ namespace stan {
       double logp(0.0);
 
       // validate args
-      if (!check_nonnegative(function, n, "Random variable", &logp))
-        return logp;
-      if (!check_not_nan(function, alpha,
-                         "Log rate parameter", &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   n,alpha,
-                                   "Random variable","Log rate parameter",
-                                   &logp)))
-        return logp;
+      check_nonnegative(function, n, "Random variable", &logp);
+      check_not_nan(function, alpha,
+                    "Log rate parameter", &logp);
+      check_consistent_sizes(function,
+                             n,alpha,
+                             "Random variable","Log rate parameter",
+                             &logp);
       
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_log_rate>::value)
@@ -210,14 +206,11 @@ namespace stan {
       double P(1.0);
           
       // Validate arguments
-      if (!check_not_nan(function, lambda, "Rate parameter", &P))
-        return P;
-      if (!check_nonnegative(function, lambda, "Rate parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, n,lambda,
-                                   "Random variable","Rate parameter",
-                                   &P)))
-        return P;
+      check_not_nan(function, lambda, "Rate parameter", &P);
+      check_nonnegative(function, lambda, "Rate parameter", &P);
+      check_consistent_sizes(function, n,lambda,
+                             "Random variable","Rate parameter",
+                             &P);
           
       // Wrap arguments into vector views
       VectorView<const T_n> n_vec(n);
@@ -230,10 +223,6 @@ namespace stan {
       using boost::math::gamma_q;
           
       agrad::OperandsAndPartials<T_rate> operands_and_partials(lambda);
-
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
         
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as zero
@@ -283,14 +272,11 @@ namespace stan {
       double P(0.0);
           
       // Validate arguments
-      if (!check_not_nan(function, lambda, "Rate parameter", &P))
-        return P;
-      if (!check_nonnegative(function, lambda, "Rate parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, n,lambda,
-                                   "Random variable","Rate parameter",
-                                   &P)))
-        return P;
+      check_not_nan(function, lambda, "Rate parameter", &P);
+      check_nonnegative(function, lambda, "Rate parameter", &P);
+      check_consistent_sizes(function, n,lambda,
+                             "Random variable","Rate parameter",
+                             &P);
           
       // Wrap arguments into vector views
       VectorView<const T_n> n_vec(n);
@@ -304,10 +290,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_rate> operands_and_partials(lambda);
 
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-        
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as neg infinity
       for (size_t i = 0; i < stan::length(n); i++) {
@@ -352,14 +334,11 @@ namespace stan {
       double P(0.0);
           
       // Validate arguments
-      if (!check_not_nan(function, lambda, "Rate parameter", &P))
-        return P;
-      if (!check_nonnegative(function, lambda, "Rate parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, n,lambda,
-                                   "Random variable","Rate parameter",
-                                   &P)))
-        return P;
+      check_not_nan(function, lambda, "Rate parameter", &P);
+      check_nonnegative(function, lambda, "Rate parameter", &P);
+      check_consistent_sizes(function, n,lambda,
+                             "Random variable","Rate parameter",
+                             &P);
           
       // Wrap arguments into vector views
       VectorView<const T_n> n_vec(n);
@@ -373,10 +352,6 @@ namespace stan {
           
       agrad::OperandsAndPartials<T_rate> operands_and_partials(lambda);
 
-      std::fill(operands_and_partials.all_partials,
-                operands_and_partials.all_partials 
-                + operands_and_partials.nvaris, 0.0);
-        
       // Explicit return for extreme values
       // The gradients are technically ill-defined, but treated as neg infinity
       for (size_t i = 0; i < stan::length(n); i++) {
@@ -410,6 +385,17 @@ namespace stan {
                 RNG& rng) {
       using boost::variate_generator;
       using boost::random::poisson_distribution;
+
+      static const char* function = "stan::prob::poisson_rng(%1%)";
+      
+      using stan::math::check_not_nan;
+      using stan::math::check_nonnegative;
+ 
+      check_not_nan(function, lambda,
+                    "Rate parameter", (double*)0);
+      check_nonnegative(function, lambda,
+                        "Rate parameter", (double*)0);
+
       variate_generator<RNG&, poisson_distribution<> >
         poisson_rng(rng, poisson_distribution<>(lambda));
       return poisson_rng();

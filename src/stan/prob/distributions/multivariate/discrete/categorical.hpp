@@ -31,10 +31,9 @@ namespace stan {
       int lb = 1;
 
       double lp = 0.0;
-      if (!check_bounded(function, n, lb, theta.size(),
-                         "Number of categories",
-                         &lp))
-        return lp;
+      check_bounded(function, n, lb, theta.size(),
+                    "Number of categories",
+                    &lp);
       
       if (!stan::is_constant_struct<T_prob>::value) {
         Eigen::Matrix<double,Eigen::Dynamic,1> theta_dbl(theta.size());
@@ -82,11 +81,10 @@ namespace stan {
       int lb = 1;
 
       double lp = 0.0;
-      for (int i = 0; i < ns.size(); ++i)
-        if (!check_bounded(function, ns[i], lb, theta.size(),
-                           "element of outcome array",
-                           &lp))
-        return lp;
+      for (size_t i = 0; i < ns.size(); ++i)
+        check_bounded(function, ns[i], lb, theta.size(),
+                      "element of outcome array",
+                      &lp);
       
       if (!stan::is_constant_struct<T_prob>::value) {
         Eigen::Matrix<double,Eigen::Dynamic,1> theta_dbl(theta.size());
@@ -115,7 +113,7 @@ namespace stan {
       
       Eigen::Matrix<typename boost::math::tools::promote_args<T_prob>::type,
                     Eigen::Dynamic,1> log_theta_ns(ns.size());
-      for (int i = 0; i < ns.size(); ++i)
+      for (size_t i = 0; i < ns.size(); ++i)
         log_theta_ns(i) = log_theta(ns[i] - 1);
     
       return sum(log_theta_ns);
@@ -136,6 +134,13 @@ namespace stan {
                     RNG& rng) {
       using boost::variate_generator;
       using boost::uniform_01;
+      using stan::math::check_simplex;
+
+      static const char* function = "stan::prob::categorical_rng(%1%)";
+
+      check_simplex(function, theta,
+                    "Probabilities parameter", (double*)0);
+
       variate_generator<RNG&, uniform_01<> >
         uniform01_rng(rng, uniform_01<>());
       

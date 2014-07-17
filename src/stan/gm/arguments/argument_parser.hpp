@@ -4,9 +4,11 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <cstring>
 
 #include <stan/gm/arguments/argument.hpp>
 #include <stan/gm/arguments/arg_method.hpp>
+#include <stan/gm/error_codes.hpp>
 
 namespace stan {
   
@@ -19,20 +21,18 @@ namespace stan {
       argument_parser(std::vector<argument*>& valid_args)
         : _arguments(valid_args),
           _help_flag(false),
-          _method_flag(false)
-      {
+          _method_flag(false) {
         _arguments.insert(_arguments.begin(), new arg_method());
       }
       
-      bool parse_args(int argc,
+      int parse_args(int argc,
                       const char* argv[],
                       std::ostream* out = 0,
                       std::ostream* err = 0) {
         
         if (argc == 1) {
           print_usage(out, argv[0]);
-          _help_flag |= true;
-          return true;
+          return error_codes::USAGE;
         }
 
         std::vector<std::string> args;
@@ -104,7 +104,7 @@ namespace stan {
           
           if (_help_flag) {
             print_usage(out, argv[0]);
-            return true;
+            return error_codes::OK;
           }
           
           if (!good_arg && err) {
@@ -113,32 +113,33 @@ namespace stan {
           
             std::vector<std::string> valid_paths;
             
-            for (int i = 0; i < _arguments.size(); ++i) {
+            for (size_t i = 0; i < _arguments.size(); ++i) {
               _arguments.at(i)->find_arg(val_name, "", valid_paths);
             }
             
             if (valid_paths.size()) {
               *err << "Perhaps you meant one of the following valid configurations?" << std::endl;
-              for (int i = 0; i < valid_paths.size(); ++i)
-                std::cout << "  " << valid_paths.at(i) << std::endl;
+              for (size_t i = 0; i < valid_paths.size(); ++i)
+                *err << "  " << valid_paths.at(i) << std::endl;
             }
           }
         }
         
         if (_help_flag)
-          return true;
+          return error_codes::OK;
         
         if (!_method_flag)
           *err << "A method must be specified!" << std::endl;
         
-        return valid_arg && good_arg && _method_flag;
+        return (valid_arg && good_arg && _method_flag) ?
+          error_codes::OK : error_codes::USAGE;
       }
       
-      void print(std::ostream* s, const char prefix = '\0') {
+      void print(std::ostream* s, const std::string prefix = "") {
         if (!s) 
           return;
 
-        for (int i = 0; i < _arguments.size(); ++i) {
+        for (size_t i = 0; i < _arguments.size(); ++i) {
           _arguments.at(i)->print(s, 0, prefix);
         }
         
@@ -148,7 +149,7 @@ namespace stan {
         if (!s) 
           return;
         
-        for (int i = 0; i < _arguments.size(); ++i) {
+        for (size_t i = 0; i < _arguments.size(); ++i) {
           _arguments.at(i)->print_help(s, 1, recurse);
         }
       }
@@ -162,8 +163,8 @@ namespace stan {
         *s << std::left;
         
         *s << "Usage: " << executable << " <arg1> <subarg1_1> ... <subarg1_m>"
-          << " ... <arg_n> <subarg_n_1> ... <subarg_n_m>"
-          << std::endl << std::endl;
+           << " ... <arg_n> <subarg_n_1> ... <subarg_n_m>"
+           << std::endl << std::endl;
         
         *s << "Begin by selecting amongst the following inference methods"
            << " and diagnostics," << std::endl;

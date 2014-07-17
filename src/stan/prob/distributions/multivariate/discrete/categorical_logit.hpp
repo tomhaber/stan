@@ -27,14 +27,12 @@ namespace stan {
       using stan::math::log_sum_exp;
 
       double lp = 0.0;
-      if (!check_bounded(function, n, 1, beta.size(),
-                         "categorical outcome out of support",
-                         &lp))
-        return lp;
-
-      if (!check_finite(function, beta, "log odds parameter", &lp))
-        return lp;
-
+      check_bounded(function, n, 1, beta.size(),
+                    "categorical outcome out of support",
+                    &lp);
+      
+      check_finite(function, beta, "log odds parameter", &lp);
+      
       if (!include_summand<propto,T_prob>::value)
         return 0.0;
         
@@ -63,14 +61,12 @@ namespace stan {
       using stan::math::sum;
 
       double lp = 0.0;
-      for (int k = 0; k < ns.size(); ++k)
-        if (!check_bounded(function, ns[k], 1, beta.size(),
-                           "categorical outcome out of support",
-                           &lp))
-          return lp;
-
-      if (!check_finite(function, beta, "log odds parameter", &lp))
-        return lp;
+      for (size_t k = 0; k < ns.size(); ++k)
+        check_bounded(function, ns[k], 1, beta.size(),
+                      "categorical outcome out of support",
+                      &lp);
+      
+      check_finite(function, beta, "log odds parameter", &lp);
 
       if (!include_summand<propto,T_prob>::value)
         return 0.0;
@@ -84,7 +80,7 @@ namespace stan {
       // FIXME:  replace with more efficient sum()
       Eigen::Matrix<typename boost::math::tools::promote_args<T_prob>::type,
                     Eigen::Dynamic,1> results(ns.size());
-      for (int i = 0; i < ns.size(); ++i)
+      for (size_t i = 0; i < ns.size(); ++i)
         results[i] = log_softmax_beta(ns[i] - 1);
       return sum(results);
     }

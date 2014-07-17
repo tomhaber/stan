@@ -130,9 +130,7 @@ namespace stan {
        * @throw std::runtime_error if y is lower than the lower bound provided.
        */
       void scalar_lb_unconstrain(double lb, T& y) {
-        if (y < lb)
-          BOOST_THROW_EXCEPTION(std::runtime_error ("y is lower than the lower bound"));
-        data_r_.push_back(log(y - lb));
+        data_r_.push_back(stan::prob::lb_free(y,lb));
       }
 
       /**
@@ -146,9 +144,7 @@ namespace stan {
        * @throw std::runtime_error if y is higher than the upper bound provided.
        */
       void scalar_ub_unconstrain(double ub, T& y) {
-        if (y > ub)
-          BOOST_THROW_EXCEPTION(std::runtime_error ("y is higher than the lower bound"));
-        data_r_.push_back(log(ub - y));
+        data_r_.push_back(stan::prob::ub_free(y,ub));
       }
 
       /**
@@ -164,9 +160,7 @@ namespace stan {
        * @throw std::runtime_error if y is not between the lower and upper bounds
        */
       void scalar_lub_unconstrain(double lb, double ub, T& y) {
-        if (y < lb || y > ub)
-          BOOST_THROW_EXCEPTION(std::runtime_error ("y is not between the lower and upper bounds"));
-        data_r_.push_back(stan::math::logit((y - lb) / (ub - lb)));
+        data_r_.push_back(stan::prob::lub_free(y,lb,ub));
       }
 
       /**
@@ -180,9 +174,7 @@ namespace stan {
        * @throw std::runtime_error if y is not between -1.0 and 1.0
        */
       void corr_unconstrain(T& y) {
-        if (y > 1.0 || y < -1.0)
-          BOOST_THROW_EXCEPTION(std::runtime_error ("y is not between -1.0 and 1.0"));
-        data_r_.push_back(atanh(y));
+        data_r_.push_back(stan::prob::corr_free(y));
       }
 
       /**
@@ -197,9 +189,7 @@ namespace stan {
        * @throw std::runtime_error if y is not between 0.0 and 1.0
         */
       void prob_unconstrain(T& y) {
-        if (y > 1.0 || y < 0.0)
-          BOOST_THROW_EXCEPTION(std::runtime_error ("y is not between 0.0 and 1.0"));
-        data_r_.push_back(stan::math::logit(y));
+        data_r_.push_back(stan::prob::prob_free(y));
       }
 
       /**
@@ -242,8 +232,10 @@ namespace stan {
        * @throw std::runtime_error if vector is not in ascending order.
        */
       void positive_ordered_unconstrain(vector_t& y) {
+        // reimplements pos_ordered_free in prob to avoid malloc
         if (y.size() == 0) return;
-        stan::math::check_positive_ordered("stan::io::positive_ordered_unconstrain(%1%)", y, "Vector");
+        stan::math::check_positive_ordered("stan::io::positive_ordered_unconstrain(%1%)", 
+                                           y, "Vector", (double*)0);
         data_r_.push_back(log(y[0]));
         for (typename vector_t::size_type i = 1; i < y.size(); ++i) {
           data_r_.push_back(log(y[i] - y[i-1]));
@@ -342,7 +334,8 @@ namespace stan {
        * @throw std::runtime_error if the vector is not a unit_vector.
        */
       void unit_vector_unconstrain(vector_t& y) {
-        stan::math::check_unit_vector("stan::io::unit_vector_unconstrain(%1%)", y, "Vector");
+        stan::math::check_unit_vector("stan::io::unit_vector_unconstrain(%1%)", 
+                                      y, "Vector", (double*)0);
         vector_t uy = stan::prob::unit_vector_free(y);
         for (typename vector_t::size_type i = 0; i < uy.size(); ++i) 
           data_r_.push_back(uy[i]);
@@ -364,7 +357,9 @@ namespace stan {
        * @throw std::runtime_error if the vector is not a simplex.
        */
       void simplex_unconstrain(vector_t& y) {
-        stan::math::check_simplex("stan::io::simplex_unconstrain(%1%)", y, "Vector");
+        stan::math::check_simplex("stan::io::simplex_unconstrain(%1%)", 
+                                  y, "Vector",
+                                  (double*)0);
         vector_t uy = stan::prob::simplex_free(y);
         for (typename vector_t::size_type i = 0; i < uy.size(); ++i) 
           data_r_.push_back(uy[i]);
@@ -391,6 +386,26 @@ namespace stan {
 
 
       /**
+       * Writes the unconstrained Cholesky factor for a correlation
+       * matrix corresponding to the specified constrained matrix.
+       *
+       * <p>The unconstraining operation is the inverse of the
+       * constraining operation in
+       * <code>cov_matrix_constrain(Matrix<T,Dynamic,Dynamic)</code>.
+       *
+       * @param y Constrained covariance matrix.
+       * @throw std::runtime_error if y has no elements or if it is not square
+       */
+      void cholesky_corr_unconstrain(matrix_t& y) {
+        // FIXME:  optimize by unrolling cholesky_factor_free
+        Eigen::Matrix<T,Eigen::Dynamic,1> y_free
+          = stan::prob::cholesky_corr_free(y);
+        for (int i = 0; i < y_free.size(); ++i)
+          data_r_.push_back(y_free[i]);
+      }
+
+
+      /**
        * Writes the unconstrained covariance matrix corresponding
        * to the specified constrained correlation matrix.
        *
@@ -409,7 +424,7 @@ namespace stan {
         typename matrix_t::size_type k_choose_2 = (k * (k-1)) / 2;
         array_vec_t cpcs(k_choose_2);
         array_vec_t sds(k);
-        bool successful = stan::prob::factor_cov_matrix(cpcs,sds,y);
+        bool successful = stan::prob::factor_cov_matrix(y,cpcs,sds);
         if(!successful)
           BOOST_THROW_EXCEPTION(std::runtime_error ("factor_cov_matrix failed"));
         for (typename matrix_t::size_type i = 0; i < k_choose_2; ++i)
@@ -434,12 +449,14 @@ namespace stan {
        *    on log scale are unconstrained.
        */
       void corr_matrix_unconstrain(matrix_t& y) {
-        stan::math::check_corr_matrix("stan::io::corr_matrix_unconstrain(%1%)", y, "Matrix");
+        stan::math::check_corr_matrix("stan::io::corr_matrix_unconstrain(%1%)", 
+                                      y, "Matrix",
+                                      (double*)0);
         size_t k = y.rows();
         size_t k_choose_2 = (k * (k-1)) / 2;
         array_vec_t cpcs(k_choose_2);
         array_vec_t sds(k);
-        bool successful = stan::prob::factor_cov_matrix(cpcs,sds,y);
+        bool successful = stan::prob::factor_cov_matrix(y,cpcs,sds);
         if (!successful)
           BOOST_THROW_EXCEPTION(std::runtime_error ("y cannot be factorized by factor_cov_matrix"));
         for (size_t i = 0; i < k; ++i) {

@@ -4,8 +4,9 @@
 #include <boost/random/lognormal_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include <stan/agrad.hpp>
+#include <stan/agrad/partials_vari.hpp>
 #include <stan/math/error_handling.hpp>
+#include <stan/math/constants.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/math/functions/square.hpp>
 #include <stan/meta/traits.hpp>
@@ -43,25 +44,16 @@ namespace stan {
       double logp(0.0);
 
       // validate args (here done over var, which should be OK)
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_nonnegative(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_finite(function, mu, "Location parameter", 
-                        &logp))
-        return logp;
-      if (!check_finite(function, sigma, "Scale parameter", 
-                        &logp))
-        return logp;
-      if (!check_positive(function, sigma, "Scale parameter", 
-                          &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,mu,sigma,
-                                   "Random variable","Location parameter","Scale parameter",
-                                   &logp)))
-        return logp;
-
+      check_not_nan(function, y, "Random variable", &logp);
+      check_nonnegative(function, y, "Random variable", &logp);
+      check_finite(function, mu, "Location parameter", &logp);
+      check_finite(function, sigma, "Scale parameter", &logp);
+      check_positive(function, sigma, "Scale parameter", &logp);
+      check_consistent_sizes(function,
+                             y,mu,sigma,
+                             "Random variable","Location parameter",
+                             "Scale parameter",
+                             &logp);
       
       VectorView<const T_y> y_vec(y);
       VectorView<const T_loc> mu_vec(mu);
@@ -174,16 +166,11 @@ namespace stan {
             && stan::length(sigma)))
         return cdf;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_nonnegative(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_finite(function, mu, "Location parameter", &cdf))
-        return cdf;
-      if (!check_finite(function, sigma, "Scale parameter", &cdf))
-        return cdf;
-      if (!check_positive(function, sigma, "Scale parameter", &cdf))
-        return cdf;
+      check_not_nan(function, y, "Random variable", &cdf);
+      check_nonnegative(function, y, "Random variable", &cdf);
+      check_finite(function, mu, "Location parameter", &cdf);
+      check_finite(function, sigma, "Scale parameter", &cdf);
+      check_positive(function, sigma, "Scale parameter", &cdf);
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale> 
         operands_and_partials(y, mu, sigma);
@@ -255,16 +242,11 @@ namespace stan {
             && stan::length(sigma)))
         return cdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_nonnegative(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, mu, "Location parameter", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, sigma, "Scale parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, sigma, "Scale parameter", &cdf_log))
-        return cdf_log;
+      check_not_nan(function, y, "Random variable", &cdf_log);
+      check_nonnegative(function, y, "Random variable", &cdf_log);
+      check_finite(function, mu, "Location parameter", &cdf_log);
+      check_finite(function, sigma, "Scale parameter", &cdf_log);
+      check_positive(function, sigma, "Scale parameter", &cdf_log);
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale> 
         operands_and_partials(y, mu, sigma);
@@ -328,16 +310,11 @@ namespace stan {
             && stan::length(sigma)))
         return ccdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_nonnegative(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, mu, "Location parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, sigma, "Scale parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, sigma, "Scale parameter", &ccdf_log))
-        return ccdf_log;
+      check_not_nan(function, y, "Random variable", &ccdf_log);
+      check_nonnegative(function, y, "Random variable", &ccdf_log);
+      check_finite(function, mu, "Location parameter", &ccdf_log);
+      check_finite(function, sigma, "Scale parameter", &ccdf_log);
+      check_positive(function, sigma, "Scale parameter", &ccdf_log);
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale> 
         operands_and_partials(y, mu, sigma);
@@ -389,6 +366,16 @@ namespace stan {
                   RNG& rng) {
       using boost::variate_generator;
       using boost::random::lognormal_distribution;
+
+      static const char* function = "stan::prob::lognormal_rng(%1%)";
+
+      using stan::math::check_finite;
+      using stan::math::check_positive;
+
+      check_finite(function, mu, "Location parameter", (double*)0);
+      check_finite(function, sigma, "Scale parameter", (double*)0);
+      check_positive(function, sigma, "Scale parameter", (double*)0);
+
       variate_generator<RNG&, lognormal_distribution<> >
         lognorm_rng(rng, lognormal_distribution<>(mu, sigma));
       return lognorm_rng();
