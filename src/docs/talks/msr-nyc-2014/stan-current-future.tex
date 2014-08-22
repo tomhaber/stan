@@ -87,7 +87,7 @@
 \hfill 
 {\footnotesize \tt mc-stan.org}
 
-\mypart{{\LARGE The Present:} \\ \spc\spc{\Huge Stan 2.4}}
+\mypart{Current:}{Stan 2.4}
 
 \sld{What is Stan?}
 
@@ -101,116 +101,15 @@
 \vspace*{-4pt}
 \begin{itemize}\small
 \item declares variables
-\item codes log posterior (penalized likelihood)
-\item calculates gradients, Hessians, etc., using auto-diff
+\item codes log posterior (or penalized likelihood)
 \end{itemize}
 \item Stan \myemph{inference}
 \vspace*{-4pt}
 \begin{itemize}\small
-\item MCMC for full Bayesian inference (+ posterior analysis)
-\item MLE for point estimates (+ Hessian-based error estimates)
+\item Sampling for full Bayesian inference
+\item Optimization + curvature for maximum likelihood estimates
 \end{itemize}
 \end{itemize}
-
-\sld{Stan is Open}
-
-\begin{itemize}
-\item Stan is \myemph{open source}
-\vspace*{-4pt}
-\begin{itemize} 
-\small
-\item Stan Core C++, CmdStan interface: {\slshape new BSD}
-\item PyStan, RStan interfaces: {\slshape GPLv3}
-\item Dependencies: Eigen, Boost, (googletest)
-\end{itemize}
-\item GitHub \myemph{hosted publicly} {\small ({\tt stan-dev})}
-\vspace*{-4pt}
-\begin{itemize}
-\small
-\item issue tracking (bug reports, feature requests)
-\item pull requests, code review, continuous integration hooks
-\end{itemize}
-\item Google Groups \myemph{public mailing lists} {\small ({\tt stan-dev}, {\tt stan-users})}
-\end{itemize}
-
-\sld{Platforms and Interfaces}
-
-\begin{itemize}
-\item \myemph{Platforms}
-\\
-Linux, Mac OS X, Windows
-\item \myemph{C++ API}
-\\
-{\footnotesize portable, standards compliant (C++03 now, moving to C++11)}
-\item \myemph{Interfaces}
-\vspace*{-4pt}
-\begin{itemize}\footnotesize
-\item \myemph{CmdStan}: Command-line or shell interface (direct executable)
-\item \myemph{RStan}: R interface (Rcpp in memory)
-\item \myemph{PyStan}: Python interface (Cython in memory)
-\item \myemph{MStan$^*$}: MATLAB interface (lightweight external process)
-\item \myemph{JuliaStan$^*$}: Julia interface (lightweight external process)
-\end{itemize}
-{\footnotesize ${}^*$ User contributed}
-\end{itemize}
-\vfill
-
-
-\sld{Who's Using Stan?}
-\begin{itemize}
-\item 830+ registrations for mailing list
-\item spanning physical, biomedical, and social sciences, 
-\\ plus engineering, education, finance, and marketing
-
-\item Papers citing Stan on {\slshape Google Scholar} in subjects
-\\[3pt]
-{\footnotesize clinical drug
-trials, general computational statistics, entomology, opthalmology,
-neurology, sociology and population dynamics, genomics, agriculture,
-psycholinguistics, molecular biology, population dynamics, materials
-engineering, botany, astrophysics, oceanography, election prediction,
-fisheries, cancer biology, public health and epidemiology, population
-ecology, collaborative filtering for recommender systems, climatology,
-educational testing, natural language processing, econometrics}
-\end{itemize}
-
-\sld{Documentation and Examples}
-%
-\begin{itemize}
-\item 400+ page core language tutorial manual
-\item separate installation, getting started, interface manuals 
-\\ {\footnotesize  (RStan, PyStan, CmdStan)}
-\item BUGS and JAGS examples (all 3 volumes), 
-\item Gelman and Hill, {\slshape Data Analysis Using Regression and
-    Multilevel/Hierarchical Models}
-\item Wagenmakers and Lee, {\slshape Bayesian Cognitive Modeling}
-\item two other books in progress
-\item user-contributed examples in group
-\end{itemize}
-
-\sld{Scaling and Evaluation}
-\begin{itemize}
-\item Type of scaling \hfill (improvement$^{*}$)
-\vspace*{-4pt}
-\begin{itemize}\small
-\item more data \hfill (1--2 orders of magnitude)
-\item more parameters \hfill (1--2 orders of magnitude)
-\item \myemph{more complex models} \hfill ({\large \myemph{$\infty$}})
-\end{itemize}
-\item imporvement vs.\ ``state-of-the-art'' \myemph{black-box MCMC}
-measured by
-\vspace*{-4pt}
-\begin{itemize}\small
-\item time to convergence
-\item time per effective sample at mixing
-\item memory usage
-\end{itemize}
-\end{itemize}
-
-
-
-
-\mypart{Part I}{Stan Front End}
 
 
 \sld{Example: \ Bernoulli}
@@ -264,6 +163,116 @@ lp__  -5.33     0.02  0.80  -7.46  -5.04  -4.78   1201     1
 \hspace*{24pt}
 \end{minipage}
 
+\sld{Stan is Open}
+
+\begin{itemize}
+\item Stan is \myemph{open source}
+\vspace*{-4pt}
+\begin{itemize} 
+\small
+\item Stan Core C++, CmdStan interface: {\slshape new BSD}
+\item PyStan, RStan interfaces: {\slshape GPLv3}
+\item Dependencies: Eigen, Boost, (googletest)
+\end{itemize}
+\item GitHub \myemph{hosted publicly} {\small ({\tt stan-dev})}
+\vspace*{-4pt}
+\begin{itemize}
+\small
+\item issue tracking (bug reports, feature requests)
+\item pull requests, code review, continuous integration hooks
+\end{itemize}
+\item Google Groups \myemph{public mailing lists} {\small ({\tt stan-dev}, {\tt stan-users})}
+\end{itemize}
+
+\sld{Platforms and Interfaces}
+
+\begin{itemize}
+\item \myemph{Platforms}
+\\
+Linux, Mac OS X, Windows
+\item \myemph{C++ API}
+\\
+{\footnotesize portable, standards compliant (C++03 now, moving to C++11)}
+\item \myemph{Interfaces}
+\vspace*{-4pt}
+\begin{itemize}\footnotesize
+\item \myemph{CmdStan}: Command-line or shell interface (direct executable)
+\item \myemph{RStan}: R interface (Rcpp in memory)
+\item \myemph{PyStan}: Python interface (Cython in memory)
+\item \myemph{MStan$^*$}: MATLAB interface (lightweight external process)
+\item \myemph{JuliaStan$^*$}: Julia interface (lightweight external process)
+\end{itemize}
+{\footnotesize ${}^*$ User contributed}
+\end{itemize}
+\vfill
+
+
+\sld{Who's Using Stan?}
+\begin{itemize}
+\item 830+ user mailing list; 100+ citations
+\vspace*{-4pt}
+\begin{itemize}\small
+\item physical, biomedical, and social sciences
+\item plus engineering, education, finance, and marketing
+\end{itemize}
+\item Application areas
+  \\[3pt]
+  {\footnotesize clinical drug trials, general computational
+    statistics, entomology, opthalmology, neurology, sociology and
+    population dynamics, genomics, agriculture, psycholinguistics,
+    molecular biology, population dynamics, materials engineering,
+    botany, astrophysics, oceanography, election prediction,
+    fisheries, cancer biology, public health and epidemiology,
+    population ecology, collaborative filtering, climatology,
+    educational testing, natural language processing, econometrics}
+\end{itemize}
+
+\sld{Documentation and Examples}
+%
+\begin{itemize}
+\item Documentation
+\vspace*{-4pt}
+\begin{itemize}\footnotesize
+\item 400+ page user's guide and reference
+\item For each interface: installation, getting started, reference
+\end{itemize}
+\item Examples
+\vspace*{-4pt}
+\begin{itemize}\footnotesize
+\item BUGS and JAGS examples (all 3 volumes), 
+\item Gelman and Hill, {\slshape Data Analysis Using Regression and \\
+    Multilevel/Hierarchical Models}
+\item Wagenmakers and Lee, {\slshape Bayesian Cognitive Modeling}
+\item two books in progress
+\item user-contributed examples in group
+\end{itemize}
+\end{itemize}
+
+\sld{Scaling and Evaluation}
+\begin{itemize}
+\item Type of scaling
+\vspace*{-4pt}
+\begin{itemize}\small
+\item more data (e.g., observations)
+\item more parameters (e.g., regression coefficients)
+\item \myemph{more complex models} (e.g., multilevel priors)
+\end{itemize}
+\item Metrics
+\vspace*{-4pt}
+\begin{itemize}\small
+\item time to convergence
+\item time per effective sample after convergence
+\item memory usage
+\vfill
+\item 0 to {\large $\infty$} orders of magnitude improvement on
+  black-box state-of-the-art (e.g., BUGS, JAGS)
+\item more improvement with more complex models
+\end{itemize}
+\end{itemize}
+
+
+
+
 \sld{Basic Program Blocks}
 
 \begin{itemize}
@@ -284,7 +293,8 @@ lp__  -5.33     0.02  0.80  -7.46  -5.04  -4.78   1201     1
 \item \myemph{\tt\bfseries model} \ (every log prob eval) 
 \vspace*{-4pt}
 \begin{itemize}\small
-\item {\slshape content}: statements definining posterior density
+\item {\slshape content}: definine posterior density (up
+  to constant)
 \item {\slshape execute}: execute statements
 \end{itemize}
 \end{itemize}
@@ -367,33 +377,6 @@ functions {
 \item \myemph{Arrays:}  of any type (and dimensionality)
 \end{itemize}
 
-\sld{Logical Operators}
-\vfill
-\noindent\spc
-{\footnotesize
-\begin{tabular}{c|ccl|l}
-{\it Op.} & {\it Prec.} & {\it Assoc.} & {\it
-  Placement} & {\it Description}
-\\ \hline \hline
-\code{||} & 9 & left & binary infix & logical or
-\\ \hline
-\Verb|&&| & 8 & left & binary infix & logical and
-\\ \hline
-\Verb|==| & 7 & left & binary infix & equality
-\\
-\Verb|!=| & 7 & left & binary infix & inequality
-\\ \hline
-\Verb|<| & 6 & left & binary infix & less than
-\\
-\Verb|<=| & 6 & left & binary infix & less than or equal
-\\
-\Verb|>| & 6 & left & binary infix & greater than 
-\\
-\Verb|>=| & 6 & left & binary infix & greater than or equal
-\end{tabular}
-}
-\vfill
-\vfill
 
 \sld{Arithmetic and Matrix Operators}
 \vfill
@@ -435,6 +418,35 @@ functions {
 }
 \vfill
 
+\sld{Logical Operators}
+\vfill
+\noindent\spc
+{\footnotesize
+\begin{tabular}{c|ccl|l}
+{\it Op.} & {\it Prec.} & {\it Assoc.} & {\it
+  Placement} & {\it Description}
+\\ \hline \hline
+\code{||} & 9 & left & binary infix & logical or
+\\ \hline
+\Verb|&&| & 8 & left & binary infix & logical and
+\\ \hline
+\Verb|==| & 7 & left & binary infix & equality
+\\
+\Verb|!=| & 7 & left & binary infix & inequality
+\\ \hline
+\Verb|<| & 6 & left & binary infix & less than
+\\
+\Verb|<=| & 6 & left & binary infix & less than or equal
+\\
+\Verb|>| & 6 & left & binary infix & greater than 
+\\
+\Verb|>=| & 6 & left & binary infix & greater than or equal
+\end{tabular}
+}
+\vfill
+\vfill
+
+
 \sld{Built-in Math Functions}
 
 \begin{itemize}
@@ -446,7 +458,7 @@ functions {
 \\
 {\footnotesize e.g., softmax,
 log gamma and digamma functions, beta functions, Bessel functions of
- and second kind, etc.}
+first and second kind, etc.}
 %
 \item Efficient, arithmetically stable \myemph{compound functions}
 \\
@@ -457,16 +469,16 @@ exponentials, log inverse logit}
 \sld{Built-in Matrix Functions}
 
 \begin{itemize}
-\item \myemph{Basic arithmetic}: all arithmetic operators
-\item \myemph{Elementwise arithmetic}: vectorized operations
+\item \myemph{Type inference}, {\small e.g., row vector times vector is scalar}
+\item \myemph{Basic and elementwise arithmetic}: all ops
 \item \myemph{Solvers}: matrix division, (log) determinant,
 inverse 
 \item \myemph{Decompositions}: QR, Eigenvalues and Eigenvectors, 
 \\
 Cholesky factorization, singular value decomposition
-\item \myemph{Compound Operations}: quadratic forms, variance scaling
 \item \myemph{Ordering, Slicing, Broadcasting}: sort, rank, block, rep
 \item \myemph{Reductions}: sum, product, norms
+\item \myemph{Compound Operations}: quadratic forms, variance scaling
 \item \myemph{Specializations}: triangular, positive-definite, etc.
 \end{itemize}
 
@@ -488,11 +500,12 @@ log-scale Poisson, logit-scale Bernoulli)}
 \item New multivariate correlation matrix density: LKJ
 \\
 {\footnotesize degrees of freedom controls 
-shrinkage to (expansion from) unit matrix}
+shrinkage to (expansion from) unit matrix; \\
+independently scale by parameter}
 \end{itemize}
 
 \sld{Statements}
-
+\vspace*{-2pt}
 \begin{itemize}
 \item \myemph{Sampling}: \ {\footnotesize \Verb|y ~ normal(mu,sigma)|}
 \ \ \ {\footnotesize (increments log probability)}
@@ -508,7 +521,9 @@ shrinkage to (expansion from) unit matrix}
 \code{if (cond) ...; else if (cond) ...;  else ...;}}
 \item \myemph{Block}: \ {\footnotesize \Verb|{ ... }|}  \ \ \ {\footnotesize
    (allows local variables)}
-\item \myemph{Print}: \ {\footnotesize print("theta=",theta);}
+\item \myemph{Print}: \ {\footnotesize \code{print("theta=",theta);}}
+\item \myemph{Throw}: \ {\footnotesize \code{raise\_exception("x must be
+    positive; found x=", x);}}
 \end{itemize}
 
 \sld{Full Bayes with MCMC}
@@ -552,7 +567,7 @@ shrinkage to (expansion from) unit matrix}
 \item split-$\hat{R}$ multi-chain convergence diagnostic (Gelman and ...)
 \item multi-chain effective sample size estimation (FFT algorithm)
 \end{itemize}
-\item Model comparison with \myemph{WAIC}
+\item Model comparison with \myemph{WAIC} or cross-validation
 \\
 {\footnotesize (internal log likelihoods; external cross-sample statistics)}
 \end{itemize}
@@ -590,7 +605,177 @@ shrinkage to (expansion from) unit matrix}
 \end{itemize}
 
 
-\mypart{Part II}{Under the Hood}
+
+
+
+\mypart{Future:}{Stan 3 \& Beyond}
+
+\sld{Stan 3: The Refactoring}
+\begin{itemize}
+\item Third time's the charm in software (re)design
+\item Goal of removing duplicated code in interfaces
+\item Minimizing dependencies between interfaces and core
+\item More modular and flexible
+\vspace*{-4pt}
+\begin{itemize}\small
+\item user-facing C++ API
+\item interface API
+\end{itemize}
+\vfill
+\item Design and some coding underway
+\end{itemize}
+
+
+\sld{Differential Equation Solver}
+\begin{itemize}
+\item Auto-diff solutions w.r.t.\ parameters \& initial states
+\item Integrate coupled system for solution with partials
+\item Auto-diff coupled Jacobian for stiff systems
+\vfill
+\item C++ prototype integrated for large PK/PD models
+\vspace*{-4pt}
+\begin{itemize}\footnotesize
+\item 
+Project with Novartis: 
+  longitudinal clinical trial w.\ multiple drugs, dosings, placebo control,
+  hierarchical model of patient-level effects, meta-analysis
+\end{itemize}
+\vfill
+\item Generalized code complete, under testing
+\item {\footnotesize With: Frederic Bois, Amy Racine-Poon, Sebastian Weber}
+\end{itemize}
+
+\sld{Higher-Order Auto-diff}
+\begin{itemize}
+\item Finish higher-order auto-diff for probability functions
+\item May punt some cumulative distribution functions
+\\
+{\footnotesize (Black art iterative algorithms required)}
+\vfill
+\item Code complete; under testing
+\end{itemize}
+
+
+\sld{Riemannian Manifold HMC}
+\begin{itemize}
+\item Supports posteriors with \myemph{position-dependent
+    curvature} with local \myemph{mass matrix estimation}
+\\
+  {\small (e.g., hierarchical models)}
+\item \myemph{NUTS} generalized to RHMC
+\item \myemph{SoftAbs} metric
+\vspace*{-4pt}
+\begin{itemize}\footnotesize
+\item Eigendecompose Hessian
+\item \myemph{positive definite} with positive eigenvalues
+\item \myemph{condition} by narrowing eigenvalue range
+\end{itemize}
+\vfill
+\item Code complete; awaiting full higher-order auto-diff
+\item {\small (Betancourt {\slshape arXiv} papers)}
+\end{itemize}
+
+\sld{Thermodynamic Sampler}
+\begin{itemize}
+\item Enhances posterior mode-finding with \myemph{multiple modes}
+\item Physically motivated alternative to ``simulated''
+  \myemph{annealing and tempering} (not really simulated!)
+\item Supplies external \myemph{heat bath}
+\item Operates through \myemph{contact manifold}
+\item System relaxes more naturally between energy levels
+\vfill
+\item Prototype complete
+\item {\small (Betancourt {\slshape arXiv} paper)}
+\end{itemize}
+
+\sld{Ensemble MCMC}
+\begin{itemize}
+\item Markov chain is ensemble of parameter vectors
+\item Interpolate/extrapolate in ensemble for Metropolis proposal
+\begin{itemize}\small
+\item Walk \& stretch moves (Goodman \& Weare)
+\item Differential evolution (ter Braak)
+\end{itemize}
+\item Highly parallelizable
+\item Derivative free
+\vfill
+\item Code complete; awaiting integration
+\end{itemize}
+
+
+
+\sld{\Large Marginal Maximum Likelihood (MML)}
+\begin{itemize}
+\item Enable MLE-like estimate with \myemph{infinite likelihoods}
+\\ {\small (e.g., hierarchical models, mixture models / clustering)}
+\item Marginalize out lower-level parameters to estimate hierarchical
+\item Estimate lower-level parameters based on hierarchical estimates
+\item Gradient-based nested optimization algorithm
+\item Errors / posterior variance estimated as in MLE
+\vfill
+\item Design complete; awaiting parameter tagging
+\end{itemize}
+
+\sld{MLE \& MML Errors}
+\begin{itemize}
+\item Simple posterior approximation
+\item Standard errors for estimators
+\item Approximate posterior covariance with multivariate normal
+\item Estimate with Laplace approximation (based on curvature)
+\item Sample and transform to constrained scale
+\vfill
+\item Design complete
+\end{itemize}
+
+
+
+
+\sld{Variational Bayes (VB)}
+\begin{itemize}
+\item \myemph{Black box} to \myemph{scale} arbitrary models
+\item Batch or stochastic (data streaming)
+\item Compute expectations via approximations (e.g., Laplace)
+\item Point estimate parametric approximations to posterior
+\item Optimize parameters to minimize KL divergence
+\vfill
+\item Prototype stage 
+\item {\footnotesize With: Dave Blei, Alp Kucukelbir, and Rajesh Ranganath}
+\end{itemize}
+
+\sld{Expectation Propagation (EP)}
+\begin{itemize}
+\item \myemph{Black box} to \myemph{scale} arbitrary models
+\item Data-parallelization
+\vspace*{-4pt}
+\begin{itemize}\small
+\item cavity distributions guide shard combination
+\end{itemize}
+\item Point estimate parametric approximations to posterior
+\item Optimize parameters to minimize KL divergence
+\vfill
+\item Prototype stage
+\item {\footnotesize With: Aki Vehtari, Nicolas Chopin, Christian Robert,
+  John Cunningham}
+\end{itemize}
+
+
+\mypart{}{The End}
+
+\sld{Stan's Namesake}
+\begin{itemize}
+\item Stanislaw Ulam (1909--1984)
+\item Co-inventor of Monte Carlo method (and hydrogen bomb)
+\item[]
+\begin{center}
+\includegraphics[width=0.25\textwidth]{img/ulam-fermiac.jpg}
+\end{center}
+{\small
+\item Ulam holding the Fermiac, Enrico Fermi's physical Monte Carlo simulator
+for random neutron diffusion}
+\end{itemize}
+
+
+\mypart{Appendix I}{Under the Hood}
 
 \sld{Euclidean Hamiltonian}
 
@@ -632,6 +817,8 @@ p - \frac{\epsilon}{2} \, \frac{\partial V(q)}{\partial q}
 \ \ \ \ \ \ \mbox{[half step in momentum]}
 \end{eqnarray*}
 \end{itemize}
+
+
 
 \sld{Standard HMC}
 \begin{itemize}
@@ -836,155 +1023,9 @@ generalize containers (arrays, matrices, vectors)
 \end{itemize}
 \end{itemize}
 
-\mypart{{\LARGE The Future:} \\ \spc\spc{\Huge Stan 3 \& Beyond}}
-
-\sld{Stan 3: The Refactoring}
-\begin{itemize}
-\item Third time's the charm in software (re)design
-\item Goal of removing duplicated code in interfaces
-\item Minimizing dependencies between interfaces and core
-\item More modular and flexible
-\vspace*{-4pt}
-\begin{itemize}\small
-\item user-facing C++ API
-\item interface API
-\end{itemize}
-\vfill
-\item Design and some coding underway
-\end{itemize}
 
 
-\sld{Differential Equation Solver}
-\begin{itemize}
-\item Auto-diff solutions w.r.t.\ parameters
-\item Integrate coupled system for solution with partials
-\item Auto-diff coupled Jacobian for stiff systems
-\vfill
-\item C++ prototype integrated for large PK/PD models
-\vspace*{-4pt}
-\begin{itemize}\footnotesize
-\item 
-Project with Novartis: 
-  longitudinal clinical trial w.\ multiple drugs, dosings, placebo control,
-  hierarchical model of patient-level effects, meta-analysis
-\end{itemize}
-\vfill
-\item Generalized code complete, under testing
-\item {\footnotesize With: Frederic Bois, Amy Racine-Poon, Sebastian Weber}
-\end{itemize}
-
-\sld{MLE/MML Error Estimation}
-\begin{itemize}
-\item Use curvature to estimate error on unconstrained scale
-\item Transform back to constrained scale 
-\item May require sampling from Laplace approximation
-\vfill
-\item Design complete
-\end{itemize}
-
-
-\sld{Higher-Order Auto-diff}
-\begin{itemize}
-\item Finish higher-order auto-diff for probability functions
-\item May punt some cumulative distribution functions
-\\
-{\footnotesize (Black art iterative algorithms required)}
-\vfill
-\item Code complete; under testing
-\end{itemize}
-
-
-\sld{Riemannian Manifold HMC}
-\begin{itemize}
-\item Supports posteriors with \myemph{position-dependent
-    curvature} with local \myemph{mass matrix estimation}
-\\
-  {\small (e.g., hierarchical models)}
-\item \myemph{NUTS} generalized to RHMC
-\item \myemph{SoftAbs} metric
-\vspace*{-4pt}
-\begin{itemize}\footnotesize
-\item Eigendecompose Hessian
-\item \myemph{positive definite} with positive eigenvalues
-\item \myemph{condition} by narrowing eigenvalue range
-\end{itemize}
-\vfill
-\item Code complete; awaiting full higher-order auto-diff
-\item {\small (Betancourt {\slshape arXiv} papers)}
-\end{itemize}
-
-\sld{Thermodynamic Sampler}
-\begin{itemize}
-\item Enhances posterior mode-finding with \myemph{multiple modes}
-\item Physically motivated alternative to ``simulated''
-  \myemph{annealing and tempering} (not really simulated!)
-\item Supplies external \myemph{heat bath}
-\item Operates through \myemph{contact manifold}
-\item System relaxes more naturally between energy levels
-\vfill
-\item Prototype complete
-\item {\small (Betancourt {\slshape arXiv} paper)}
-\end{itemize}
-
-\sld{\Large Marginal Maximum Likelihood (MML)}
-\begin{itemize}
-\item Enable MLE-like estimate with \myemph{infinite likelihoods}
-\\ {\small (e.g., hierarchical models, mixture models / clustering)}
-\item Marginalize out lower-level parameters to estimate hierarchical
-\item Estimate lower-level parameters based on hierarchical estimates
-\item Gradient-based nested optimization algorithm
-\item Errors / posterior variance estimated as in MLE
-\vfill
-\item Design complete; awaiting parameter tagging
-\end{itemize}
-
-\sld{Variational Bayes (VB)}
-\begin{itemize}
-\item \myemph{Black box} to \myemph{scale} arbitrary models
-\item Batch or stochastic (data streaming)
-\item Compute expectations via approximations (e.g., Laplace)
-\item Point estimate parametric approximations to posterior
-\item Optimize parameters to minimize KL divergence
-\vfill
-\item Prototype stage 
-\item {\footnotesize With: Dave Blei, Alp Kucukelbir, and Rajesh Ranganath}
-\end{itemize}
-
-\sld{Expectation Propagation (EP)}
-\begin{itemize}
-\item \myemph{Black box} to \myemph{scale} arbitrary models
-\item Data-parallelization
-\vspace*{-4pt}
-\begin{itemize}\small
-\item cavity distributions guide shard combination
-\end{itemize}
-\item Point estimate parametric approximations to posterior
-\item Optimize parameters to minimize KL divergence
-\vfill
-\item Prototype stage
-\item {\footnotesize With: Aki Vehtari, Nicolas Chopin, Christian Robert,
-  John Cunningham}
-\end{itemize}
-
-
-\mypart{}{The End}
-
-\sld{Stan's Namesake}
-\begin{itemize}
-\item Stanislaw Ulam (1909--1984)
-\item Co-inventor of Monte Carlo method (and hydrogen bomb)
-\item[]
-\begin{center}
-\includegraphics[width=0.25\textwidth]{img/ulam-fermiac.jpg}
-\end{center}
-{\small
-\item Ulam holding the Fermiac, Enrico Fermi's physical Monte Carlo simulator
-for random neutron diffusion}
-\end{itemize}
-
-
-
-\mypart{Appendix I}{Bayesian Data Analysis}
+\mypart{Appendix II}{Bayesian Data Analysis}
 
 \sld{Bayesian Data Analysis}
 \begin{itemize}
