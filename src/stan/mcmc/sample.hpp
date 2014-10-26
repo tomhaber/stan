@@ -1,8 +1,10 @@
-#ifndef __STAN__MCMC__SAMPLE__HPP__
-#define __STAN__MCMC__SAMPLE__HPP__
+#ifndef STAN__MCMC__SAMPLE__HPP
+#define STAN__MCMC__SAMPLE__HPP
 
 #include <vector>
 #include <string>
+
+#include <stan/math/matrix/Eigen.hpp>
 
 namespace stan {
   
@@ -10,64 +12,39 @@ namespace stan {
     
     class sample {
       
-    private:
-      
-      std::vector<double> _cont_params; // Continuous coordinates of sample
-      std::vector<int> _disc_params;    // Discrete coordinates of sample
-      double _log_prob;                 // Log probability of sample
-      double _accept_stat;              // Acceptance statistic of transition
-      
     public:
       
-      sample(const std::vector<double>& q,
-             const std::vector<int>& r,
+      sample(const Eigen::VectorXd& q,
              double log_prob,
              double stat) :
-      _cont_params(q), 
-      _disc_params(r),
-      _log_prob(log_prob),
-      _accept_stat(stat) {};
+      cont_params_(q),
+      log_prob_(log_prob),
+      accept_stat_(stat) {};
       
       virtual ~sample() {}; // No-op
       
-      inline int size_cont() const { 
-        return _cont_params.size(); 
+      int size_cont() const {
+        return cont_params_.size();
       }
       
-      inline double cont_params(int k) const { 
-        return _cont_params[k]; 
+      double cont_params(int k) const {
+        return cont_params_(k);
       }
       
-      inline void cont_params(std::vector<double>& x) const {
-        x = _cont_params;
+      void cont_params(Eigen::VectorXd& x) const {
+        x = cont_params_;
       }
       
-      inline const std::vector<double>& cont_params() const { 
-        return _cont_params; 
-      }
-      
-      inline int size_disc() const { 
-        return _disc_params.size();
-      }
-      
-      inline int disc_params(int k) const {
-        return _disc_params[k];
-      }
-      
-      inline void disc_params(std::vector<int>& n) const {
-        n = _disc_params;
-      }
-      
-      inline const std::vector<int>& disc_params() const {
-        return _disc_params;
+      const Eigen::VectorXd& cont_params() const {
+        return cont_params_;
       }
       
       inline double log_prob() const {
-        return _log_prob;
+        return log_prob_;
       }
       
       inline double accept_stat() const {
-        return _accept_stat;
+        return accept_stat_;
       }
       
       void get_sample_param_names(std::vector<std::string>& names) {
@@ -76,9 +53,15 @@ namespace stan {
       }
       
       void get_sample_params(std::vector<double>& values) {
-        values.push_back(_log_prob);
-        values.push_back(_accept_stat);
+        values.push_back(log_prob_);
+        values.push_back(accept_stat_);
       }
+      
+    private:
+      
+      Eigen::VectorXd cont_params_; // Continuous coordinates of sample
+      double log_prob_;             // Log probability of sample
+      double accept_stat_;          // Acceptance statistic of transition
       
     };
     

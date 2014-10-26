@@ -1,5 +1,5 @@
-#ifndef __STAN__PROB__TRAITS_HPP__
-#define __STAN__PROB__TRAITS_HPP__
+#ifndef STAN__PROB__TRAITS_HPP
+#define STAN__PROB__TRAITS_HPP
 
 #include <stan/meta/traits.hpp>
 #include <boost/math/tools/promotion.hpp>
@@ -29,7 +29,9 @@ namespace stan {
     template <bool propto,
               typename T1=double, typename T2=double, 
               typename T3=double, typename T4=double,
-              typename T5=double, typename T6=double>
+              typename T5=double, typename T6=double,
+              typename T7=double, typename T8=double,
+              typename T9=double, typename T10=double>
     struct include_summand {
 
       /**
@@ -45,6 +47,10 @@ namespace stan {
                    || !stan::is_constant<typename scalar_type<T4>::type>::value
                    || !stan::is_constant<typename scalar_type<T5>::type>::value
                    || !stan::is_constant<typename scalar_type<T6>::type>::value 
+                   || !stan::is_constant<typename scalar_type<T7>::type>::value
+                   || !stan::is_constant<typename scalar_type<T8>::type>::value 
+                   || !stan::is_constant<typename scalar_type<T9>::type>::value
+                   || !stan::is_constant<typename scalar_type<T10>::type>::value 
                    )
 
       };

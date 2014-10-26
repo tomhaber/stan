@@ -1,5 +1,5 @@
-#ifndef __STAN__AGRAD__REV__MATRIX__EIGEN_NUMTRAITS_HPP__
-#define __STAN__AGRAD__REV__MATRIX__EIGEN_NUMTRAITS_HPP__
+#ifndef STAN__AGRAD__REV__MATRIX__EIGEN_NUMTRAITS_HPP
+#define STAN__AGRAD__REV__MATRIX__EIGEN_NUMTRAITS_HPP
 
 #include <limits>
 #include <stan/math/matrix/Eigen.hpp>
@@ -86,7 +86,7 @@ namespace Eigen {
 
     /**
      * Return standard library's epsilon for double-precision floating
-     * point, <code>std::numeric_limits&lt;double&gt;::epsilon()</code>.
+     * point, <code>std::numeric_limits<double>::epsilon()</code>.
      *
      * @return Same epsilon as a <code>double</code>.
      */

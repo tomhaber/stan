@@ -1,10 +1,14 @@
-#ifndef __STAN__MATH__ERROR_HANDLING__CHECK_NONNEGATIVE_HPP__
-#define __STAN__MATH__ERROR_HANDLING__CHECK_NONNEGATIVE_HPP__
+#ifndef STAN__MATH__ERROR_HANDLING_CHECK_NONNEGATIVE_HPP
+#define STAN__MATH__ERROR_HANDLING_CHECK_NONNEGATIVE_HPP
 
 #include <stan/math/error_handling/dom_err.hpp>
 #include <stan/math/error_handling/dom_err_vec.hpp>
+#include <boost/type_traits/is_unsigned.hpp>
+#include <stan/meta/traits.hpp>
+#include <stan/math/meta/value_type.hpp>
 
 namespace stan {
+
   namespace math {
 
     namespace {
@@ -32,7 +36,7 @@ namespace stan {
                           T_result* result) {
           using stan::length;
           for (size_t n = 0; n < length(y); n++) {
-            if (!boost::is_unsigned<typename T_y::value_type>::value 
+            if (!boost::is_unsigned<typename value_type<T_y>::type>::value 
                 && !(stan::get(y,n) >= 0)) 
               return dom_err_vec(n,function,y,name,
                                  " is %1%, but must be >= 0!","",
@@ -42,6 +46,8 @@ namespace stan {
         }
       };
     }
+
+    // throws if any element in y is nan
     template <typename T_y, typename T_result>
     inline bool check_nonnegative(const char* function,
                                   const T_y& y,
@@ -50,14 +56,6 @@ namespace stan {
       return nonnegative<T_y,T_result,is_vector_like<T_y>::value>
         ::check(function, y, name, result);
     }
-    template <typename T_y>
-    inline bool check_nonnegative(const char* function,
-                                  const T_y& y,
-                                  const char* name) {
-      return check_nonnegative<T_y,typename scalar_type<T_y>::type *>
-        (function,y,name,0);
-    }
-
   }
 }
 #endif

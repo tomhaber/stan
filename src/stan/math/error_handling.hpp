@@ -1,5 +1,5 @@
-#ifndef __STAN__MATH__ERROR_HANDLING_HPP__
-#define __STAN__MATH__ERROR_HANDLING_HPP__
+#ifndef STAN__MATH__ERROR_HANDLING_HPP
+#define STAN__MATH__ERROR_HANDLING_HPP
 
 #include <algorithm>
 #include <cstddef>
@@ -10,10 +10,10 @@
 #include <boost/type_traits/is_unsigned.hpp>
 
 #include <stan/meta/traits.hpp>
-#include <stan/math/error_handling/raise_domain_error.hpp>
 #include <stan/math/error_handling/dom_err.hpp>
 #include <stan/math/error_handling/dom_err_vec.hpp>
 #include <stan/math/error_handling/check_not_nan.hpp>
+#include <stan/math/error_handling/check_equal.hpp>
 #include <stan/math/error_handling/check_finite.hpp>
 #include <stan/math/error_handling/check_greater.hpp>
 #include <stan/math/error_handling/check_greater_or_equal.hpp>
@@ -22,6 +22,7 @@
 #include <stan/math/error_handling/check_bounded.hpp>
 #include <stan/math/error_handling/check_nonnegative.hpp>
 #include <stan/math/error_handling/check_positive.hpp>
+#include <stan/math/error_handling/check_positive_finite.hpp>
 #include <stan/math/error_handling/check_consistent_size.hpp>
 #include <stan/math/error_handling/check_consistent_sizes.hpp>
 

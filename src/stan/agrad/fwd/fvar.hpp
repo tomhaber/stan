@@ -1,5 +1,9 @@
-#ifndef __STAN__AGRAD__FWD__FVAR__HPP__
-#define __STAN__AGRAD__FWD__FVAR__HPP__
+#ifndef STAN__AGRAD__FWD__FVAR__HPP
+#define STAN__AGRAD__FWD__FVAR__HPP
+
+#include <ostream>
+#include <boost/math/special_functions/fpclassify.hpp>
+#include <stan/meta/likely.hpp>
 
 namespace stan {
 
@@ -14,13 +18,21 @@ namespace stan {
       T val() { return val_; }
       T tangent() { return d_; }
 
+      typedef fvar value_type;
+
       // TV and TD must be assignable to T
       template <typename TV, typename TD>
-      fvar(const TV& val, const TD& deriv) : val_(val), d_(deriv) {  }
+      fvar(const TV& val, const TD& deriv) : val_(val), d_(deriv) { 
+        if (unlikely(boost::math::isnan(val)))
+          d_ = val;
+      }
 
       // TV must be assignable to T
       template <typename TV>
-      fvar(const TV& val) : val_(val), d_(0.0) {  }
+      fvar(const TV& val) : val_(val), d_(0.0) {
+        if (unlikely(boost::math::isnan(val)))
+          d_ = val;
+      }
       
       fvar() : val_(0.0), d_(0.0) { }
 
@@ -121,6 +133,12 @@ namespace stan {
         fvar<T> result(val_,d_);
         --val_;
         return result;
+      }
+
+      friend
+      std::ostream& 
+      operator<<(std::ostream& os, const fvar<T>& v) {
+        return os << v.val_ << ':' << v.d_;
       }
     };
   }

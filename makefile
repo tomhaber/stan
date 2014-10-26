@@ -1,6 +1,4 @@
 # Makefile for Stan.
-# This makefile relies heavily on the make defaults for
-# make 3.81.
 ##
 
 
@@ -8,37 +6,38 @@
 help:
 
 ## Disable implicit rules.
-SUFFIXES:
+SUFIXES:
 
 ##
 # Users should only need to set these three variables for use.
 # - CC: The compiler to use. Expecting g++ or clang++.
 # - O: Optimization level. Valid values are {0, 1, 2, 3}.
 # - AR: archiver (must specify for cross-compiling)
-# - OS: {mac, win, linux}. 
+# - OS_TYPE: {mac, win, linux}
+# - C++11: Compile with C++11 extensions, Valid values: {true, false}. 
 ##
 CC = g++
 O = 3
 O_STANC = 0
 AR = ar
+C++11 = false
 
 ##
 # Library locations
 ##
-STAN_HOME := $(dir $(firstword $(MAKEFILE_LIST)))
-EIGEN ?= lib/eigen_3.1.3
-BOOST ?= lib/boost_1.53.0
-GTEST ?= lib/gtest_1.6.0
+EIGEN ?= lib/eigen_3.2.2
+BOOST ?= lib/boost_1.54.0
+GTEST ?= lib/gtest_1.7.0
 
 ##
 # Set default compiler options.
 ## 
-CFLAGS = -I src -I $(EIGEN) -I $(BOOST) -Wall -DBOOST_RESULT_OF_USE_TR1 -DBOOST_NO_DECLTYPE -DBOOST_DISABLE_ASSERTS
+CFLAGS = -I src -isystem $(EIGEN) -isystem $(BOOST) -Wall -DBOOST_RESULT_OF_USE_TR1 -DBOOST_NO_DECLTYPE -DBOOST_DISABLE_ASSERTS -pipe
 CFLAGS_GTEST = -DGTEST_USE_OWN_TR1_TUPLE
 LDLIBS = -Lbin -lstan
 LDLIBS_STANC = -Lbin -lstanc
 EXE = 
-PATH_SEPARATOR = /
+WINE =
 
 
 ##
@@ -48,156 +47,117 @@ PATH_SEPARATOR = /
 # - CC_MINOR: minor version of CC
 ##
 -include make/detect_cc
-# FIXME: verify compiler
 
-# OS is set automatically by this script
+# OS_TYPE is set automatically by this script
 ##
 # These includes should update the following variables
 # based on the OS:
 #   - CFLAGS
 #   - CFLAGS_GTEST
 #   - EXE
-#   - PCH
 ##
--include make/os_detect
+-include make/detect_os
 
-%$(EXE) : %.o %.cpp bin/libstan.a
-	$(LINK.c) -O$O $(OUTPUT_OPTION) $< $(LDLIBS)
-
-##
-# Tell make the default way to compile a .o file.
-##
-%.o : %.cpp
-	$(COMPILE.c) -O$O $(OUTPUT_OPTION) $<
-
-##
-# Tell make the default way to compile a .o file.
-##
 bin/%.o : src/%.cpp
 	@mkdir -p $(dir $@)
 	$(COMPILE.c) -O$O $(OUTPUT_OPTION) $<
 
 ##
 # Rule for generating dependencies.
-# Applies to all *.cpp files in src.
-# Test cpp files are handled slightly differently.
 ##
 bin/%.d : src/%.cpp
-	@if test -d $(dir $@); \
-	then \
-	(set -e; \
+	@mkdir -p $(dir $@)
+	@set -e; \
 	rm -f $@; \
 	$(CC) $(CFLAGS) -O$O $(TARGET_ARCH) -MM $< > $@.$$$$; \
-	sed -e 's,\($(notdir $*)\)\.o[ :]*,$(dir $@)\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$);\
-	fi
-
-%.d : %.cpp
-	@if test -d $(dir $@); \
-	then \
-	(set -e; \
-	rm -f $@; \
-	$(CC) $(CFLAGS) -O$O $(TARGET_ARCH) -MM $< > $@.$$$$; \
-	sed -e 's,\($(notdir $*)\)\.o[ :]*,$(dir $@)\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$);\
-	fi
-
+	sed -e 's,\($(notdir $*)\)\.o[ :]*,$(dir $@)\1\.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
 
 .PHONY: help
 help:
 	@echo '--------------------------------------------------------------------------------'
-	@echo 'Stan: makefile'
+	@echo 'Stan makefile:'
 	@echo '  Current configuration:'
-	@echo '  - OS (Operating System):   ' $(OS)
-	@echo '  - CC (Compiler):           ' $(CC)
-	@echo '  - O (Optimization Level):  ' $(O)
-	@echo '  - O_STANC (Opt for stanc): ' $(O_STANC)
-	@echo '  - STAN_HOME                ' $(STAN_HOME)
-	@echo ''
-	@echo 'Build a Stan model:'
-	@echo '  Given a Stan model at foo/bar.stan, the make target is:'
-	@echo '  - foo/bar$(EXE)'
-	@echo ''
-	@echo '  This target will:'
-	@echo '  1. Build the Stan compiler: bin/stanc$(EXE).'
-	@echo '  2. Use the Stan compiler to generate C++ code, foo/bar.cpp.'
-	@echo '  3. Compile the C++ code using $(CC) to generate foo/bar$(EXE)'
-	@echo ''
-	@echo '  Example - Sample from a normal:'
-	@echo '    1. Copy src/models/basic_distributions/normal.stan to foo/normal.stan:'
-	@echo '       mkdir foo'
-	@echo '       cp src/models/basic_distributions/normal.stan foo'
-	@echo '    2. Build the model foo/normal$(EXE):'
-	@echo '       make foo/normal$(EXE)'
-	@echo '    3. Run the model:'
-	@echo '       foo'$(PATH_SEPARATOR)'normal$(EXE) --samples=foo/normal.csv'
-	@echo '    4. Look at the samples:'
-	@echo '       more foo'$(PATH_SEPARATOR)'normal.csv'
+	@echo '  - OS_TYPE (Operating System): ' $(OS_TYPE)
+	@echo '  - CC (Compiler):              ' $(CC)
+	@echo '  - Compiler version:           ' $(CC_MAJOR).$(CC_MINOR)
+	@echo '  - O (Optimization Level):     ' $(O)
+	@echo '  - O_STANC (Opt for stanc):    ' $(O_STANC)
+ifdef TEMPLATE_DEPTH
+	@echo '  - TEMPLATE_DEPTH:             ' $(TEMPLATE_DEPTH)
+endif
+	@echo '  - STAN_HOME                   ' $(STAN_HOME)
+	@echo '  Library configuration:'
+	@echo '  - EIGEN                       ' $(EIGEN)
+	@echo '  - BOOST                       ' $(BOOST)
+	@echo '  - GTEST                       ' $(GTEST)
 	@echo ''
 	@echo 'Common targets:'
 	@echo '  Model related:'
-	@echo '  - bin/stanc$(EXE): Build the Stan compiler.'
-	@echo '  - bin/print$(EXE): Build the print utility.'
 	@echo '  - bin/libstan.a  : Build the Stan static library (used in linking models).'
-	@echo '  - bin/libstanc.a : Build the Stan compiler static library (used in linking'
-	@echo '                     bin/stanc$(EXE))'
-	@echo '  - models/*$(EXE) : If a Stan model exists at src/models/*.stan, this target'
-	@echo '                     will copy the Stan model to models/*.stan, then build the'
-	@echo '                     Stan model.'
-	@echo '  - *$(EXE)        : If a Stan model exists at *.stan, this target will build'
-	@echo '                     the Stan model as an executable.'
-	@echo '  Tests:'
-	@echo '  - test-unit      : Runs unit tests.'
-	@echo '  - test-distributions : Runs unit tests for the distributions (subset of test-unit)'
-	@echo '  - test-models    : Runs diagnostic models.'
-	@echo '  - test-bugs      : Runs the bugs examples (subset of test-models).'
-	@echo '  - test-all       : Runs all tests.'
+	@echo '  - bin/libstanc.a : Build the Stan compiler static library'
 	@echo '  Documentation:'
 	@echo '  - manual         : Builds the reference manual. Copies built manual to'
-	@echo '                     doc/stan-reference.pdf'
+	@echo '                     doc/stan-reference-$(VERSION_STRING).pdf'
+	@echo '                     (requires LaTeX installation)'
 	@echo '  - doxygen        : Builds the API documentation. The documentation is located'
 	@echo '                     doc/api/'
-	@echo '  Distribution:'
-	@echo '  - dist           : Creates a tarball for distribution. The resulting tarball is'
-	@echo '                     created at the top level as stan-src-<version>.tgz.'
+	@echo '                     (requires doxygen installation)'
+	@echo ' TESTS:'
+	@echo ''
+	@echo '   Unit tests are built through make by specifying the executable as the target'
+	@echo '   to make. For a test in src/test/*_test.cpp, the executable is test/*$(EXE).'
+	@echo ''
+	@echo '   Header tests'
+	@echo '   - test-headers  : tests all source headers to ensure they are compilable and'
+	@echo '                     include enough header files.'
+	@echo ''
+	@echo '   To run a single header test, add "-test" to the end of the file name.'
+	@echo '   Example: make src/stan/math/constants.hpp-test'
+	@echo ''
 	@echo '  Clean:'
 	@echo '  - clean          : Basic clean. Leaves doc and compiled libraries intact.'
+	@echo '  - clean-manual   : Cleans temporary files from building the manual.'
+	@echo '  - clean-deps     : Removes dependency files for tests. If tests stop building,'
+	@echo '                     run this target.'
 	@echo '  - clean-all      : Cleans up all of Stan.'
+	@echo ''
+	@echo '  Higher level targets:'
+	@echo '  - docs           : Builds all docs.'
+	@echo ''
 	@echo '--------------------------------------------------------------------------------'
 
--include make/libstan  # libstan.a
--include make/tests    # tests: test-all, test-unit, test-models
--include make/models   # models
--include make/command  # bin/stanc, bin/print
--include make/doxygen  # doxygen
--include make/dist     # dist: for distribution
--include make/manual   # manual: manual, doc/stan-reference.pdf
--include make/demo     # for building demos
+include make/libstan  # bin/libstan.a bin/libstanc.a
+include make/tests    # tests
+include make/doxygen  # doxygen
+include make/manual   # manual: manual, doc/stan-reference.pdf
+include make/local    # for local stuff
 
-ifneq (,$(filter-out runtest/%,$(filter-out clean%,$(MAKECMDGOALS))))
+##
+# Dependencies
+##
+ifneq (,$(filter-out test-headers generate-tests clean% %-test %.d,$(MAKECMDGOALS)))
   -include $(addsuffix .d,$(subst $(EXE),,$(MAKECMDGOALS)))
 endif
 
-ifneq (,$(filter runtest/%,$(MAKECMDGOALS)))
-  -include $(addsuffix .d,$(subst runtest/,,$(MAKECMDGOALS)))
-endif
+##
+# Documentation
+##
 
-ifneq (,$(filter runtest_no_fail/%,$(MAKECMDGOALS)))
-  -include $(addsuffix .d,$(subst runtest_no_fail/,,$(MAKECMDGOALS)))
-endif
-
-all: build docs
-build: libstan.a stanc
+.PHONY: docs
 docs: manual doxygen
 
 ##
 # Clean up.
 ##
-MODEL_SPECS := $(wildcard src/test/gm/model_specs/compiled/*.stan) 
-.PHONY: clean clean-demo clean-dox clean-manual clean-models clean-all
+MODEL_SPECS := $(shell find src/test -type f -name '*.stan')
+.PHONY: clean clean-demo clean-dox clean-manual clean-models clean-all clean-deps
 clean:
 	$(RM) $(shell find src -type f -name '*.dSYM') $(shell find src -type f -name '*.d.*')
-	$(RM) $(wildcard $(MODEL_SPECS:%.stan=%.cpp) $(MODEL_SPECS:%.stan=%$(EXE)) $(MODEL_SPECS:%.stan=%.o))
+	$(RM) $(wildcard $(MODEL_SPECS:%.stan=%.cpp))
+	$(RM) $(wildcard $(MODEL_SPECS:%.stan=%$(EXE)))
+	$(RM) $(wildcard $(MODEL_SPECS:%.stan=%.o))
+	$(RM) $(wildcard $(MODEL_SPECS:%.stan=%.d))
 
 clean-dox:
 	$(RM) -r doc/api
@@ -205,14 +165,13 @@ clean-dox:
 clean-manual:
 	cd src/docs/stan-reference; $(RM) *.brf *.aux *.bbl *.blg *.log *.toc *.pdf *.out *.idx *.ilg *.ind *.cb *.cb2 *.upa
 
-clean-models:
-	$(RM) -r models $(MODEL_HEADER).gch $(MODEL_HEADER).pch $(MODEL_HEADER).d
+clean-deps:
+	@echo '  removing dependency files'
+	$(shell find . -type f -name '*.d' -exec rm {} +)
 
-clean-all: clean clean-dox clean-manual clean-models
-	$(RM) -r test/* bin doc
-	$(RM) $(shell find src -type f -name '*.d') $(shell find src -type f -name '*.o')
-	cd src/test/agrad/distributions/univariate/continuous; $(RM) *_generated_test.cpp
-	cd src/test/agrad/distributions/univariate/discrete; $(RM) *_generated_test.cpp
-	cd src/test/agrad/distributions/multivariate/continuous; $(RM) *_generated_test.cpp
-	cd src/test/agrad/distributions/multivariate/discrete; $(RM) *_generated_test.cpp
-
+clean-all: clean clean-manual clean-deps
+	$(RM) -r test/* bin
+	@echo '  removing .o files'
+	$(shell find src -type f -name '*.o' -exec rm {} +)
+	@echo '  removing generated test files'
+	$(shell find src/test/unit-distribution -name '*_generated_test.cpp' -type f -exec rm {} +)

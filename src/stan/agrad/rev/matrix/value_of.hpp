@@ -1,5 +1,5 @@
-#ifndef __STAN__AGRAD__REV__MATRIX__VALUE_OF_HPP__
-#define __STAN__AGRAD__REV__MATRIX__VALUE_OF_HPP__
+#ifndef STAN__AGRAD__REV__MATRIX__VALUE_OF_HPP
+#define STAN__AGRAD__REV__MATRIX__VALUE_OF_HPP
 
 #include <stan/math/matrix/Eigen.hpp>
 #include <stan/agrad/rev/var.hpp>
@@ -25,7 +25,7 @@ namespace stan {
      **/
     template<int R,int C>
     inline Eigen::Matrix<double,R,C> value_of(const Eigen::Matrix<var,R,C> &M) {
-      size_t i,j;
+      int i,j;
       Eigen::Matrix<double,R,C> Md(M.rows(),M.cols());
       for (j = 0; j < M.cols(); j++)
         for (i = 0; i < M.rows(); i++)

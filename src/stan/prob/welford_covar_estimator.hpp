@@ -1,5 +1,5 @@
-#ifndef __STAN__PROB__WELFORD__COVAR__ESTIMATOR__BETA__
-#define __STAN__PROB__WELFORD__COVAR__ESTIMATOR__BETA__
+#ifndef STAN__PROB__WELFORD__COVAR__ESTIMATOR__BETA
+#define STAN__PROB__WELFORD__COVAR__ESTIMATOR__BETA
 
 #include <vector>
 #include <stan/math/matrix/Eigen.hpp>
@@ -22,15 +22,13 @@ namespace stan {
         _m2.setZero();
       }
       
-      void add_sample(std::vector<double>& q) {
-        
-        Eigen::Map<Eigen::VectorXd> x(&q[0], q.size());
+      void add_sample(const Eigen::VectorXd& q) {
         
         ++_num_samples;
         
-        Eigen::VectorXd delta(x - _m);
+        Eigen::VectorXd delta(q - _m);
         _m  += delta / _num_samples;
-        _m2 += (x - _m) * delta.transpose();
+        _m2 += (q - _m) * delta.transpose();
         
       }
       

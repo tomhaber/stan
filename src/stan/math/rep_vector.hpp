@@ -1,8 +1,8 @@
-#ifndef __STAN__MATH__REP_VECTOR_HPP__
-#define __STAN__MATH__REP_VECTOR_HPP__
+#ifndef STAN__MATH__REP_VECTOR_HPP
+#define STAN__MATH__REP_VECTOR_HPP
 
 #include <boost/math/tools/promotion.hpp>
-#include <stan/math/validate_non_negative_rep.hpp>
+#include <stan/math/error_handling/check_nonnegative.hpp>
 #include <stan/math/matrix/Eigen.hpp>
 
 namespace stan {
@@ -14,7 +14,7 @@ namespace stan {
     Eigen::Matrix<typename boost::math::tools::promote_args<T>::type,
                   Eigen::Dynamic,1>
     rep_vector(const T& x, int n) {
-      validate_non_negative_rep(n,"rep_vector");
+      check_nonnegative("rep_vector(%1%)", n,"n", (double*)0);
       return Eigen::Matrix<typename boost::math::tools::promote_args<T>::type,
                            Eigen::Dynamic,1>::Constant(n,x);
     }

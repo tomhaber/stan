@@ -1,5 +1,5 @@
-#ifndef __STAN__MATH__ERROR_HANDLING__CHECK_CONSISTENT_SIZES_HPP__
-#define __STAN__MATH__ERROR_HANDLING__CHECK_CONSISTENT_SIZES_HPP__
+#ifndef STAN__MATH__ERROR_HANDLING__CHECK_CONSISTENT_SIZES_HPP
+#define STAN__MATH__ERROR_HANDLING__CHECK_CONSISTENT_SIZES_HPP
 
 #include <stan/math/error_handling/check_consistent_size.hpp>
 #include <stan/math/error_handling/dom_err.hpp>
@@ -8,6 +8,7 @@
 namespace stan {
   namespace math {
 
+    // NOTE: this will not throw if nan is passed in.
     template <typename T1, typename T2, typename T_result>
     inline bool check_consistent_sizes(const char* function,
                                        const T1& x1, 

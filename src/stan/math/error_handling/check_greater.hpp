@@ -1,5 +1,5 @@
-#ifndef __STAN__MATH__ERROR_HANDLING__CHECK_GREATER_HPP__
-#define __STAN__MATH__ERROR_HANDLING__CHECK_GREATER_HPP__
+#ifndef STAN__MATH__ERROR_HANDLING_CHECK_GREATER_HPP
+#define STAN__MATH__ERROR_HANDLING_CHECK_GREATER_HPP
 
 #include <stan/math/error_handling/dom_err.hpp>
 #include <stan/math/error_handling/dom_err_vec.hpp>
@@ -52,6 +52,8 @@ namespace stan {
         }
       };
     }
+    
+    // throws if any element in y or low is nan
     template <typename T_y, typename T_low, typename T_result>
     inline bool check_greater(const char* function,
                               const T_y& y,
@@ -60,14 +62,6 @@ namespace stan {
                               T_result* result) {
       return greater<T_y,T_low,T_result,is_vector_like<T_y>::value>
         ::check(function,y,low,name,result);
-    }
-    template <typename T_y, typename T_low>
-    inline bool check_greater(const char* function,
-                              const T_y& y,
-                              const T_low& low,
-                              const char* name) {
-      return check_greater<T_y,T_low,typename scalar_type<T_y>::type *>
-        (function,y,low,name,0);
     }
  
   }

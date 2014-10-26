@@ -1,5 +1,5 @@
-#ifndef __STAN__MATH__ERROR_HANDLING__CHECK_LESS_OR_EQUAL_HPP__
-#define __STAN__MATH__ERROR_HANDLING__CHECK_LESS_OR_EQUAL_HPP__
+#ifndef STAN__MATH__ERROR_HANDLING_CHECK_LESS_OR_EQUAL_HPP
+#define STAN__MATH__ERROR_HANDLING_CHECK_LESS_OR_EQUAL_HPP
 
 #include <stan/math/error_handling/dom_err.hpp>
 #include <stan/math/error_handling/dom_err_vec.hpp>
@@ -46,6 +46,8 @@ namespace stan {
         }
       };
     }
+
+    // throws if any element of y or high is nan
     template <typename T_y, typename T_high, typename T_result>
     inline bool check_less_or_equal(const char* function,
                                     const T_y& y,
@@ -54,14 +56,6 @@ namespace stan {
                                     T_result* result) {
       return less_or_equal<T_y,T_high,T_result,is_vector_like<T_y>::value>
         ::check(function,y,high,name,result);
-    }
-    template <typename T_y, typename T_high>
-    inline bool check_less_or_equal(const char* function,
-                                    const T_y& y,
-                                    const T_high& high,
-                                    const char* name) {
-      return check_less_or_equal<T_y,T_high,typename scalar_type<T_y>::type *>
-        (function,y,high,name,0);
     }
 
   }

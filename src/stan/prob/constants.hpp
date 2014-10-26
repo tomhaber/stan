@@ -1,5 +1,5 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS_CONSTANTS_HPP__
-#define __STAN__PROB__DISTRIBUTIONS_CONSTANTS_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS_CONSTANTS_HPP
+#define STAN__PROB__DISTRIBUTIONS_CONSTANTS_HPP
 
 #include <boost/math/constants/constants.hpp>
 
@@ -30,6 +30,9 @@ namespace stan {
 
       const double SQRT_2 = std::sqrt(2.0);
 
+      const double LOG_TWO_PI = LOG_TWO + LOG_PI;
+      
+      const double NEG_LOG_TWO_PI = - LOG_TWO_PI;
     }
  
  }

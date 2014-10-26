@@ -1,8 +1,8 @@
-#ifndef __STAN__AGRAD__REV__BOOST_FPCLASSIFY_HPP__
-#define __STAN__AGRAD__REV__BOOST_FPCLASSIFY_HPP__
+#ifndef STAN__AGRAD__REV__BOOST_FPCLASSIFY_HPP
+#define STAN__AGRAD__REV__BOOST_FPCLASSIFY_HPP
 
 #include <boost/math/special_functions/fpclassify.hpp>
-#include <stan/agrad/agrad.hpp>
+#include <stan/agrad/rev.hpp>
 
 namespace boost {
 

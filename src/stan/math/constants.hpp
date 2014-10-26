@@ -1,5 +1,5 @@
-#ifndef __STAN__MATH__CONSTANTS_HPP__
-#define __STAN__MATH__CONSTANTS_HPP__
+#ifndef STAN__MATH__CONSTANTS_HPP
+#define STAN__MATH__CONSTANTS_HPP
 
 #include <boost/math/constants/constants.hpp>
 
@@ -134,22 +134,13 @@ namespace stan {
     }
 
     /**
-     * Return minimum positive number representable.
+     * Returns the difference between 1.0 and the next value
+     * representable.
      *
      * @return Minimum positive number.
      */
-    inline double epsilon() {
+    inline double machine_precision() {
       return EPSILON;
-    }
-
-    /**
-     * Return maximum negative number (i.e., negative
-     * number with smallest absolute value).
-     *
-     * @return Maximum negative number.
-     */
-    inline double negative_epsilon() {
-      return NEGATIVE_EPSILON;
     }
 
     const double TWO_OVER_SQRT_PI = 2.0 / std::sqrt(boost::math::constants::pi<double>());

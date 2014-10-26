@@ -1,5 +1,5 @@
-#ifndef __STAN__MCMC__BASE__HAMILTONIAN__BETA__
-#define __STAN__MCMC__BASE__HAMILTONIAN__BETA__
+#ifndef STAN__MCMC__BASE__HAMILTONIAN__BETA
+#define STAN__MCMC__BASE__HAMILTONIAN__BETA
 
 #include <stdexcept>
 #include <fstream>
@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <stan/math/matrix/Eigen.hpp>
+#include <stan/model/util.hpp>
 
 namespace stan {
 
@@ -17,7 +18,7 @@ namespace stan {
       
     public:
       
-      base_hamiltonian(M& m, std::ostream* e): _model(m), _err_stream(e) {};
+      base_hamiltonian(M& m, std::ostream* e): model_(m), err_stream_(e) {};
       ~base_hamiltonian() {}; 
       
       virtual double T(P& z) = 0;
@@ -41,42 +42,39 @@ namespace stan {
       
       virtual void update(P& z) {
         
-        std::vector<double> grad_lp(this->_model.num_params_r());
-        
         try {
-          z.V = - this->_model.grad_log_prob(z.q, z.r, grad_lp, _err_stream);
-        } catch (std::domain_error e) {
-          this->_write_error_msg(_err_stream, e);
+          stan::model::gradient(model_, z.q, z.V, z.g, err_stream_);
+          z.V *= -1;
+        } catch (const std::exception& e) {
+          this->write_error_msg_(err_stream_, e);
           z.V = std::numeric_limits<double>::infinity();
         }
         
-        Eigen::Map<Eigen::VectorXd> eigen_g(&(grad_lp[0]), grad_lp.size());
-        z.g = - eigen_g;
+        z.g *= -1;
         
       }
       
     protected: 
       
-        M& _model;
+        M& model_;
       
-        std::ostream* _err_stream;
+        std::ostream* err_stream_;
       
-        void _write_error_msg(std::ostream* error_msgs,
-                             const std::domain_error& e) {
+        void write_error_msg_(std::ostream* error_msgs,
+                              const std::exception& e) {
           
           if (!error_msgs) return;
           
           *error_msgs << std::endl
-                      << "Informational Message: The parameter state is about to be Metropolis"
-                      << " rejected due to the following underlying, non-fatal (really)"
-                      << " issue (and please ignore that what comes next might say 'error'): "
-                      << e.what()
+                      << "Informational Message: The current Metropolis proposal is about to be "
+                      << "rejected because of the following issue:"
                       << std::endl
-                      << "If the problem persists across multiple draws, you might have"
-                      << " a problem with an initial state or a gradient somewhere."
+                      << e.what() << std::endl
+                      << "If this warning occurs sporadically, such as for highly constrained "
+                      << "variable types like covariance matrices, then the sampler is fine,"
                       << std::endl
-                      << " If the problem does not persist, the resulting samples will still"
-                      << " be drawn from the posterior."
+                      << "but if this warning occurs often then your model may be either severely "
+                      << "ill-conditioned or misspecified."
                       << std::endl;
           
       }
@@ -86,6 +84,6 @@ namespace stan {
   } // mcmc
 
 } // stan
-          
+
 
 #endif

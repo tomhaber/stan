@@ -1,5 +1,5 @@
-#ifndef __STAN__IO__VAR_CONTEXT_HPP__
-#define __STAN__IO__VAR_CONTEXT_HPP__
+#ifndef STAN__IO__VAR_CONTEXT_HPP
+#define STAN__IO__VAR_CONTEXT_HPP
 
 #include <sstream>
 #include <stdexcept>
@@ -28,6 +28,7 @@ namespace stan {
      */
     class var_context {
     public:
+      virtual ~var_context() {};
 
       /**
        * Return <code>true</code> if the specified variable name is
@@ -151,6 +152,7 @@ namespace stan {
           std::stringstream msg;
           msg << "mismatch in number dimensions declared and found in context"
               << "; processing stage=" << stage
+              << "; variable name=" << name
               << "; dims declared=";
           add_vec(msg,dims_declared);
           msg << "; dims found=";
@@ -162,6 +164,7 @@ namespace stan {
             std::stringstream msg;
             msg << "mismatch in dimension declared and found in context"
                 << "; processing stage=" << stage
+                << "; variable name=" << name
                 << "; position="
                 << i
                 << "; dims declared=";

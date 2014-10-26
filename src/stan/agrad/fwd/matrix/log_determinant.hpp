@@ -1,5 +1,5 @@
-#ifndef __STAN__AGRAD__FWD__MATRIX__LOG_DETERMINANT_HPP__
-#define __STAN__AGRAD__FWD__MATRIX__LOG_DETERMINANT_HPP__
+#ifndef STAN__AGRAD__FWD__MATRIX__LOG_DETERMINANT_HPP
+#define STAN__AGRAD__FWD__MATRIX__LOG_DETERMINANT_HPP
 
 #include <vector>
 #include <boost/math/tools/promotion.hpp>
@@ -7,8 +7,9 @@
 #include <stan/agrad/fwd/fvar.hpp>
 #include <stan/agrad/fwd/matrix/typedefs.hpp>
 #include <stan/agrad/fwd/matrix/determinant.hpp>
-#include <stan/agrad/fwd/fabs.hpp>
-#include <stan/agrad/fwd/log.hpp>
+#include <stan/agrad/fwd/functions/fabs.hpp>
+#include <stan/agrad/fwd/functions/log.hpp>
+#include <stan/math/error_handling/matrix/check_square.hpp>
 
 namespace stan {
   namespace agrad {
@@ -17,7 +18,7 @@ namespace stan {
     inline 
     fvar<T>
     log_determinant(const Eigen::Matrix<fvar<T>, R, C>& m) {
-      stan::math::validate_square(m, "log_determinant");
+      stan::math::check_square("log_determinant(%1%)",m,"m",(double*)0);
 
       return stan::agrad::log(stan::agrad::fabs(stan::agrad::determinant(m)));
     }
