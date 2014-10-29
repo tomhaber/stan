@@ -85,6 +85,104 @@ stdmathdigits=true]{lucimatx}
 \hfill 
 {\footnotesize \tt mc-stan.org}
 
+\sld{Why Stan?}
+%
+\begin{itemize}
+\item {\slshape\bfseries Application}: Fit rich Bayesian statistical models
+\end{itemize}
+%
+\vspace*{2pt}
+\begin{itemize}
+\item {\slshape Problem}: Gibbs and Metropolis too slow (diffusive) 
+\item {\slshape Solution}: Hamiltonian Monte Carlo (flow)
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Interpreters slow and unscalable
+\item {\slshape Solution}: Compiled to C++
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Need gradients of log posterior for HMC
+\item {\slshape Solution}: Reverse-mode algorithmic differentation
+\end{itemize}
+
+\sld{Why? (cont.)}
+%
+\begin{itemize}
+\item {\slshape Problem}:  Existing algo-diff slow, limited, unextensible
+\item {\slshape Solution}: Our own algo-diff
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Algo-diff requires functions templated on
+  all args
+\item {\slshape Solution}: Our own density library, Eigen linear
+ algebra
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Need unconstrained parameters for HMC
+\item {\slshape Solution}: Variable transforms w. Jacobian determinants
+%
+\end{itemize}
+
+\sld{Why? (cont.)}
+%
+\begin{itemize}
+\item {\slshape Problem}:  Need ease of use of BUGS
+\item {\slshape Solution}: Compile a domain-specific language
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Pure directed graphical language inflexible
+\item {\slshape Solution}: Imperative probabilistic programming language
+
+\vspace*{8pt}
+\item {\slshape Problem}:  Need to tune parameters for HMC
+\item {\slshape Solution}: Tune step size and estimate mass matrix
+  during warmup;  on-the-fly number of steps (NUTS)
+%
+\end{itemize}
+
+\sld{Why? (cont.)}
+\begin{itemize}
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Efficient up-to-proportion density calcs
+\item {\slshape Solution}: Density template metaprogramming 
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Limited error checking, recovery
+\item {\slshape Solution}: Static model typing, informative exceptions
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Poor boundary behavior
+\item {\slshape Solution}: Calculate limits (e.g. $\lim_{x \rightarrow
+    0} x \log x$)
+%
+\end{itemize}
+
+\sld{Why? (continued)}
+\begin{itemize}
+\item {\slshape Problem}:  Nobody knows everything
+\item {\slshape Solution}: Expand project team with specialists
+\vspace*{8pt}
+\item {\slshape Problem}:  Nobody knows everything
+\item {\slshape Solution}: Expand project team with specialists
+\vspace*{8pt}
+\item {\slshape Problem}:  Heterogeneous user base
+\item {\slshape Solution}: More interfaces (R, Python, MATLAB, Julia),
+  domain-specific examples, tutorials
+
+\end{itemize}
+
+\sld{Why? (continued)}
+\begin{itemize}
+\item {\slshape Problem}:  Expanding project team and interfaces
+\item {\slshape Solution}: GitHub process: branch, pull request, code
+  review, continuous integration
+%
+\vspace*{8pt}
+\item {\slshape Problem}:  Restrictive licensing (e.g., closed, GPL, etc.)
+\item {\slshape Solution}: Open-source, BSD license
+\end{itemize}
+
 \sld{What is Stan?}
 
 \begin{itemize}
