@@ -131,8 +131,8 @@ stdmathdigits=true]{lucimatx}
 %
 \vspace*{8pt}
 \item {\slshape Problem}:  Pure directed graphical language inflexible
-\item {\slshape Solution}: Imperative probabilistic programming language
-
+\item {\slshape Solution}: Imperative probabilistic programming
+  language
 \vspace*{8pt}
 \item {\slshape Problem}:  Need to tune parameters for HMC
 \item {\slshape Solution}: Tune step size and estimate mass matrix
@@ -163,24 +163,23 @@ stdmathdigits=true]{lucimatx}
 \item {\slshape Problem}:  Nobody knows everything
 \item {\slshape Solution}: Expand project team with specialists
 \vspace*{8pt}
-\item {\slshape Problem}:  Nobody knows everything
-\item {\slshape Solution}: Expand project team with specialists
-\vspace*{8pt}
-\item {\slshape Problem}:  Heterogeneous user base
-\item {\slshape Solution}: More interfaces (R, Python, MATLAB, Julia),
-  domain-specific examples, tutorials
-
+\item {\slshape Problem}:  Expanding code and project team
+\item {\slshape Solution}: GitHub: branch, pull 
+  request, code review
+\item {\slshape Solution}: Jenkins: continuous integration
+\item {\slshape Solution}: ongoing refactoring and code simplification
+%
 \end{itemize}
 
 \sld{Why? (continued)}
 \begin{itemize}
-\item {\slshape Problem}:  Expanding project team and interfaces
-\item {\slshape Solution}: GitHub process: branch, pull request, code
-  review, continuous integration
-%
+\item {\slshape Problem}:  Heterogeneous user base
+\item {\slshape Solution}: More interfaces (R, Python, MATLAB, Julia)
+\item {\slshape Solution}:  domain-specific examples, tutorials
 \vspace*{8pt}
-\item {\slshape Problem}:  Restrictive licensing (e.g., closed, GPL, etc.)
-\item {\slshape Solution}: Open-source, BSD license
+\item {\slshape Problem}:  Restrictive licensing limits use
+\item {\slshape Solution}: Code and doc open source
+(BSD, CC-BY)
 \end{itemize}
 
 \sld{What is Stan?}
@@ -557,6 +556,24 @@ astrophysics, molecular biology, oceanography, climatology
 \item \myemph{Ordering, Slicing, Broadcasting}: sort, rank, block, rep
 \item \myemph{Reductions}: sum, product, norms
 \item \myemph{Specializations}: triangular, positive-definite, etc.
+\end{itemize}
+
+\sld{Differential Equation Solver}
+\begin{itemize}
+\item Auto-diff solutions w.r.t.\ parameters
+\item Integrate coupled system for solution with partials
+\item Auto-diff coupled Jacobian for stiff systems
+  \vfill
+\item C++ prototype integrated for large PK/PD models
+  \vspace*{-4pt}
+  \begin{itemize}\footnotesize
+  \item 
+    Project with Novartis: 
+    longitudinal clinical trial w.\ multiple drugs, dosings, placebo control,
+    hierarchical model of patient-level effects, meta-analysis
+  \item
+    Collaborators: Frederic Bois, Amy Racine, Sebastian Weber
+  \end{itemize}
 \end{itemize}
 
 \sld{Distribution Library}
@@ -970,23 +987,7 @@ astrophysics, molecular biology, oceanography, climatology
   \end{itemize}
 \end{itemize}
 
-\sld{Differential Equation Solver}
-\begin{itemize}
-\item Auto-diff solutions w.r.t.\ parameters
-\item Integrate coupled system for solution with partials
-\item Auto-diff coupled Jacobian for stiff systems
-  \vfill
-\item C++ prototype integrated for large PK/PD models
-  \vspace*{-4pt}
-  \begin{itemize}\footnotesize
-  \item 
-    Project with Novartis: 
-    longitudinal clinical trial w.\ multiple drugs, dosings, placebo control,
-    hierarchical model of patient-level effects, meta-analysis
-  \item
-    Collaborators: Frederic Bois, Amy Racine, Sebastian Weber
-  \end{itemize}
-\end{itemize}
+
 
 
 \mypart{Part III}{What's Next?}
