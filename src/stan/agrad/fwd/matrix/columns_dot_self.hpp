@@ -1,10 +1,9 @@
-#ifndef __STAN__AGRAD__REV__MATRIX__COLUMNS_DOT_SELF_HPP__
-#define __STAN__AGRAD__REV__MATRIX__COLUMNS_DOT_SELF_HPP__
+#ifndef STAN__AGRAD__FWD__MATRIX__COLUMNS_DOT_SELF_HPP
+#define STAN__AGRAD__FWD__MATRIX__COLUMNS_DOT_SELF_HPP
 
 #include <vector>
 #include <stan/math/matrix/Eigen.hpp>
 #include <stan/math/matrix/typedefs.hpp>
-#include <stan/math/matrix/validate_vector.hpp>
 #include <stan/agrad/fwd/fvar.hpp>
 #include <stan/agrad/fwd/matrix/dot_self.hpp>
 

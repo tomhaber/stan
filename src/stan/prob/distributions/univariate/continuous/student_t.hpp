@@ -1,18 +1,20 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__STUDENT_T_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__STUDENT_T_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__STUDENT_T_HPP
+#define STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__STUDENT_T_HPP
 
 #include <boost/random/student_t_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive_finite.hpp>
 #include <stan/math/constants.hpp>
 #include <stan/math/functions/square.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
-#include <stan/prob/traits.hpp>
 #include <stan/prob/internal_math.hpp>
+#include <stan/prob/traits.hpp>
 
 namespace stan {
 
@@ -48,12 +50,12 @@ namespace stan {
     typename return_type<T_y,T_dof,T_loc,T_scale>::type
     student_t_log(const T_y& y, const T_dof& nu, const T_loc& mu, 
                   const T_scale& sigma) {
-      static const char* function = "stan::prob::student_t_log(%1%)";
+      static const std::string function("stan::prob::student_t_log");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
 
       // check if any vectors are zero length
       if (!(stan::length(y) 
@@ -65,30 +67,15 @@ namespace stan {
       double logp(0.0);
 
       // validate args (here done over var, which should be OK)
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if(!check_finite(function, nu, "Degrees of freedom parameter", 
-                       &logp))
-        return logp;
-      if(!check_positive(function, nu, "Degrees of freedom parameter", 
-                         &logp))
-        return logp;
-      if (!check_finite(function, mu, "Location parameter", 
-                        &logp))
-        return logp;
-      if (!check_finite(function, sigma, "Scale parameter", 
-                        &logp))
-        return logp;
-      if (!check_positive(function, sigma, "Scale parameter", 
-                          &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,mu,sigma,
-                                   "Random variable",
-                                   "Degrees of freedom parameter",
-                                   "Location parameter","Scale parameter",
-                                   &logp)))
-        return logp;
+      check_not_nan(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Degrees of freedom parameter", nu,
+                             "Location parameter", mu,
+                             "Scale parameter", sigma);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_dof,T_loc,T_scale>::value)
@@ -237,28 +224,20 @@ namespace stan {
             && stan::length(sigma))) 
         return 1.0;
       
-      static const char* function = "stan::prob::student_t_cdf(%1%)";
+      static const std::string function("stan::prob::student_t_cdf");
           
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
           
       double P(1.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_finite(function, mu, "Location parameter", &P))
-        return P;
-      if (!check_finite(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, sigma, "Scale parameter", &P))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -419,28 +398,20 @@ namespace stan {
             && stan::length(sigma))) 
         return 0.0;
       
-      static const char* function = "stan::prob::student_t_cdf_log(%1%)";
+      static const std::string function("stan::prob::student_t_cdf_log");
           
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
           
       double P(0.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_finite(function, mu, "Location parameter", &P))
-        return P;
-      if (!check_finite(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, sigma, "Scale parameter", &P))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -589,28 +560,20 @@ namespace stan {
             && stan::length(sigma))) 
         return 0.0;
       
-      static const char* function = "stan::prob::student_t_ccdf_log(%1%)";
+      static const std::string function("stan::prob::student_t_ccdf_log");
           
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
           
       double P(0.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_finite(function, mu, "Location parameter", &P))
-        return P;
-      if (!check_finite(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, sigma, "Scale parameter", &P))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -758,21 +721,14 @@ namespace stan {
       using boost::variate_generator;
       using boost::random::student_t_distribution;
 
-      static const char* function = "stan::prob::student_t_rng(%1%)";
+      static const std::string function("stan::prob::student_t_rng");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
 
-      if(!check_finite(function, nu, "Degrees of freedom parameter"))
-        return 0;
-      if(!check_positive(function, nu, "Degrees of freedom parameter")) 
-        return 0;
-      if (!check_finite(function, mu, "Location parameter")) 
-        return 0;
-      if (!check_finite(function, sigma, "Scale parameter")) 
-        return 0;
-      if (!check_positive(function, sigma, "Scale parameter"))
-        return 0;
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
 
       variate_generator<RNG&, student_t_distribution<> >
         rng_unit_student_t(rng, student_t_distribution<>(nu));

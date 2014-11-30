@@ -1,18 +1,20 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__CHI_SQUARE_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__CHI_SQUARE_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__CHI_SQUARE_HPP
+#define STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__CHI_SQUARE_HPP
 
 #include <boost/random/chi_squared_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_nonnegative.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive_finite.hpp>
 #include <stan/math/constants.hpp>
 #include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
-#include <stan/prob/traits.hpp>
 #include <stan/prob/internal_math.hpp>
+#include <stan/prob/traits.hpp>
 
 namespace stan {
 
@@ -41,34 +43,26 @@ namespace stan {
               typename T_y, typename T_dof>
     typename return_type<T_y,T_dof>::type
     chi_square_log(const T_y& y, const T_dof& nu) {
-      static const char* function = "stan::prob::chi_square_log(%1%)";
+      static const std::string function("stan::prob::chi_square_log");
 
       // check if any vectors are zero length
       if (!(stan::length(y) 
             && stan::length(nu)))
         return 0.0;
       
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_nonnegative;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_nonnegative;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
       
       double logp(0.0);
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_nonnegative(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &logp))
-        return logp;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,
-                                   "Random variable","Degrees of freedom parameter",
-                                   &logp)))
-        return logp;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Degrees of freedom parameter", nu);
     
       
       // set up template expressions wrapping scalars into vector views
@@ -158,13 +152,12 @@ namespace stan {
     template <typename T_y, typename T_dof>
     typename return_type<T_y,T_dof>::type
     chi_square_cdf(const T_y& y, const T_dof& nu) {
-      static const char* function = "stan::prob::chi_square_cdf(%1%)";
+      static const std::string function("stan::prob::chi_square_cdf");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_nonnegative;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_nonnegative;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
 
       double cdf(1.0);
@@ -173,19 +166,12 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu))) 
         return cdf;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_nonnegative(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &cdf))
-        return cdf;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &cdf))
-        return cdf;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,
-                                   "Random variable","Degrees of freedom parameter",
-                                   &cdf)))
-        return cdf;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Degrees of freedom parameter", nu);
 
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -265,13 +251,12 @@ namespace stan {
     template <typename T_y, typename T_dof>
     typename return_type<T_y,T_dof>::type
     chi_square_cdf_log(const T_y& y, const T_dof& nu) {
-      static const char* function = "stan::prob::chi_square_cdf_log(%1%)";
+      static const std::string function("stan::prob::chi_square_cdf_log");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_nonnegative;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_nonnegative;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
 
       double cdf_log(0.0);
@@ -280,19 +265,12 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu))) 
         return cdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_nonnegative(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &cdf_log))
-        return cdf_log;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,
-                                   "Random variable","Degrees of freedom parameter",
-                                   &cdf_log)))
-        return cdf_log;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Degrees of freedom parameter", nu);
 
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -365,13 +343,12 @@ namespace stan {
     template <typename T_y, typename T_dof>
     typename return_type<T_y,T_dof>::type
     chi_square_ccdf_log(const T_y& y, const T_dof& nu) {
-      static const char* function = "stan::prob::chi_square_ccdf_log(%1%)";
+      static const std::string function("stan::prob::chi_square_ccdf_log");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_nonnegative;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_nonnegative;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
 
       double ccdf_log(0.0);
@@ -380,19 +357,12 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu))) 
         return ccdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_nonnegative(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &ccdf_log))
-        return ccdf_log;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,
-                                   "Random variable","Degrees of freedom parameter",
-                                   &ccdf_log)))
-        return ccdf_log;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Degrees of freedom parameter", nu);
 
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -469,16 +439,11 @@ namespace stan {
       using boost::variate_generator;
       using boost::random::chi_squared_distribution;
 
-      static const char* function = "stan::prob::chi_square_rng(%1%)";
+      static const std::string function("stan::prob::chi_square_rng");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
+      using stan::error_handling::check_positive_finite;
       
-      if (!check_finite(function, nu, "Degrees of freedom parameter"))
-        return 0;
-      if (!check_positive(function, nu, "Degrees of freedom parameter"))
-        return 0;
-    
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
 
       variate_generator<RNG&, chi_squared_distribution<> >
         chi_square_rng(rng, chi_squared_distribution<>(nu));

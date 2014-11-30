@@ -1,5 +1,5 @@
-#ifndef __STAN__MODEL__UTIL_HPP__
-#define __STAN__MODEL__UTIL_HPP__
+#ifndef STAN__MODEL__UTIL_HPP
+#define STAN__MODEL__UTIL_HPP
 
 #include <cmath>
 #include <iomanip>
@@ -9,6 +9,8 @@
 #include <stan/math/matrix/Eigen.hpp>
 #include <stan/agrad/rev/matrix/grad.hpp>
 #include <stan/agrad/rev/var.hpp>
+#include <stan/agrad/rev/var.hpp>
+#include <stan/agrad/autodiff.hpp>
 
 namespace stan {
 
@@ -85,24 +87,26 @@ namespace stan {
                          std::ostream* msgs = 0) {
       using std::vector;
       using stan::agrad::var;
-      vector<var> ad_params_r(params_r.size());
-      for (size_t i = 0; i < model.num_params_r(); ++i) {
-        stan::agrad::var var_i(params_r[i]);
-        ad_params_r[i] = var_i;
-      }
+      double lp;
       try {
+        vector<var> ad_params_r(params_r.size());
+        for (size_t i = 0; i < model.num_params_r(); ++i) {
+          stan::agrad::var var_i(params_r[i]);
+          ad_params_r[i] = var_i;
+        }
         var adLogProb
           = model
           .template log_prob<propto,
                              jacobian_adjust_transform>(ad_params_r,
                                                         params_i,msgs);
-        double val = adLogProb.val();
+        lp = adLogProb.val();
         adLogProb.grad(ad_params_r,gradient);
-        return val;
-      } catch (std::exception &ex) {
+      } catch (const std::exception &ex) {
         stan::agrad::recover_memory();
         throw;
       }
+      stan::agrad::recover_memory();
+      return lp;
     }
     
     /**
@@ -131,21 +135,22 @@ namespace stan {
                            std::ostream* msgs = 0) {
       using stan::agrad::var;
       using std::vector;
-      vector<var> ad_params_r;
-      for (size_t i = 0; i < model.num_params_r(); ++i)
-        ad_params_r.push_back(params_r(i));
+      double lp;
       try {
-        double lp
-        = model
+        vector<var> ad_params_r;
+        for (size_t i = 0; i < model.num_params_r(); ++i)
+          ad_params_r.push_back(params_r(i));
+        lp
+          = model
           .template log_prob<true,
                              jacobian_adjust_transform>(ad_params_r, msgs)
-            .val();
-        stan::agrad::recover_memory();
-        return lp;
+          .val();
       } catch (std::exception &ex) {
         stan::agrad::recover_memory();
         throw;
       }
+      stan::agrad::recover_memory();
+      return lp;
     }
     
     /**
@@ -377,7 +382,83 @@ namespace stan {
         perturbed_params[d] = params_r[d];
       }
       return result;
-    }    
+    }
+    
+    // Interface for automatic differentiation of models
+    
+    template <class M>
+    struct model_functional {
+      
+      const M& model;
+      std::ostream* o;
+      
+      model_functional(const M& m, std::ostream* out): model(m), o(out) {};
+      
+      template <typename T>
+      T operator()(Eigen::Matrix<T, Eigen::Dynamic, 1>& x) const {
+        return model.template log_prob<true, true, T>(x, o);
+      }
+      
+    };
+    
+    template <class M>
+    void gradient(const M& model,
+                  const Eigen::Matrix<double, Eigen::Dynamic, 1>& x,
+                  double& f,
+                  Eigen::Matrix<double, Eigen::Dynamic, 1>& grad_f,
+                  std::ostream* msgs = 0) {
+      
+      stan::agrad::gradient(model_functional<M>(model, msgs), x, f, grad_f);
+      
+    }
+    
+    template <class M>
+    void hessian(const M& model,
+                 const Eigen::Matrix<double, Eigen::Dynamic, 1>& x,
+                 double& f,
+                 Eigen::Matrix<double, Eigen::Dynamic, 1>& grad_f,
+                 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& hess_f,
+                 std::ostream* msgs = 0) {
+      
+      stan::agrad::hessian(model_functional<M>(model, msgs), x, f, grad_f, hess_f);
+      
+    }
+
+    template <class M>
+    void gradient_dot_vector(const M& model,
+                             const Eigen::Matrix<double, Eigen::Dynamic, 1>& x,
+                             const Eigen::Matrix<double, Eigen::Dynamic, 1>& v,
+                             double& f,
+                             double& grad_f_dot_v,
+                             std::ostream* msgs = 0) {
+      
+      stan::agrad::gradient_dot_vector(model_functional<M>(model, msgs), x, v, f, grad_f_dot_v);
+      
+    }
+    
+    template <class M>
+    void hessian_times_vector(const M& model,
+                              const Eigen::Matrix<double, Eigen::Dynamic, 1>& x,
+                              const Eigen::Matrix<double, Eigen::Dynamic, 1>& v,
+                              double& f,
+                              Eigen::Matrix<double, Eigen::Dynamic, 1>& hess_f_dot_v,
+                              std::ostream* msgs = 0) {
+      
+      stan::agrad::hessian_times_vector(model_functional<M>(model, msgs), x, v, f, hess_f_dot_v);
+      
+    }
+    
+    template <class M>
+    void grad_tr_mat_times_hessian(const M& model,
+                                   const Eigen::Matrix<double, Eigen::Dynamic, 1>& x,
+                                   const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& X,
+                                   Eigen::Matrix<double, Eigen::Dynamic, 1>& grad_tr_X_hess_f,
+                                   std::ostream* msgs = 0) {
+      
+      stan::agrad::grad_tr_mat_times_hessian(model_functional<M>(model, msgs), x, X, grad_tr_X_hess_f);
+      
+    }
+    
 
   }
 }

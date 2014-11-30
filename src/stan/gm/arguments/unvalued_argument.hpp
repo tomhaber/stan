@@ -1,5 +1,5 @@
-#ifndef __STAN__GM__ARGUMENTS__UNVALUED__ARGUMENT__BETA__
-#define __STAN__GM__ARGUMENTS__UNVALUED__ARGUMENT__BETA__
+#ifndef STAN__GM__ARGUMENTS__UNVALUED__ARGUMENT__BETA
+#define STAN__GM__ARGUMENTS__UNVALUED__ARGUMENT__BETA
 #include <iostream>
 
 #include <vector>
@@ -16,7 +16,7 @@ namespace stan {
       unvalued_argument()
         : _is_present(false) {}
       
-      void print(std::ostream* s, const int depth, const char prefix) {}
+      void print(std::ostream* s, const int depth, const std::string prefix) {}
       
       void print_help(std::ostream* s, const int depth, const bool recurse = false) {
         if (!s)

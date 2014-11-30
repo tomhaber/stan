@@ -1,8 +1,8 @@
-#ifndef __STAN__MATH__MATRIX__INVERSE_HPP__
-#define __STAN__MATH__MATRIX__INVERSE_HPP__
+#ifndef STAN__MATH__MATRIX__INVERSE_HPP
+#define STAN__MATH__MATRIX__INVERSE_HPP
 
 #include <stan/math/matrix/Eigen.hpp>
-#include <stan/math/matrix/validate_square.hpp>
+#include <stan/error_handling/matrix/check_square.hpp>
 
 namespace stan {
   namespace math {
@@ -16,7 +16,7 @@ namespace stan {
     inline
     Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>
     inverse(const Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>& m) {
-      validate_square(m,"matrix inverse");
+      stan::error_handling::check_square("inverse", "m", m);
       return m.inverse();
     }
 

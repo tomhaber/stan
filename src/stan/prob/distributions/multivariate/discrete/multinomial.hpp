@@ -1,14 +1,14 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__MULTIVARIATE__DISCRETE__MULTINOMIAL_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__MULTIVARIATE__DISCRETE__MULTINOMIAL_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__MULTIVARIATE__DISCRETE__MULTINOMIAL_HPP
+#define STAN__PROB__DISTRIBUTIONS__MULTIVARIATE__DISCRETE__MULTINOMIAL_HPP
 
 #include <boost/math/special_functions/gamma.hpp>
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/variate_generator.hpp>
-
-#include <stan/math/error_handling.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/matrix/check_simplex.hpp>
+#include <stan/error_handling/matrix/check_size_match.hpp>
+#include <stan/error_handling/scalar/check_nonnegative.hpp>
 #include <stan/math/functions/multiply_log.hpp>
-#include <stan/math/matrix_error_handling.hpp>
+#include <stan/error_handling/matrix.hpp>
 #include <stan/prob/constants.hpp>
 #include <stan/prob/distributions/univariate/discrete/binomial.hpp>
 #include <stan/prob/distributions/multivariate/discrete/categorical.hpp>
@@ -24,25 +24,20 @@ namespace stan {
     typename boost::math::tools::promote_args<T_prob>::type
     multinomial_log(const std::vector<int>& ns,
                     const Eigen::Matrix<T_prob,Eigen::Dynamic,1>& theta) {
-      static const char* function = "stan::prob::multinomial_log(%1%)";
+      static const std::string function("stan::prob::multinomial_log");
 
-      using stan::math::check_nonnegative;
-      using stan::math::check_simplex;
-      using stan::math::check_size_match;
+      using stan::error_handling::check_nonnegative;
+      using stan::error_handling::check_simplex;
+      using stan::error_handling::check_size_match;
       using boost::math::tools::promote_args;
       using boost::math::lgamma;
 
       typename promote_args<T_prob>::type lp(0.0);
-      if (!check_nonnegative(function, ns, "Number of trials variable", &lp))
-        return lp;
-      if (!check_simplex(function, theta, "Probabilites parameter", 
-                         &lp))
-        return lp;
-      if (!check_size_match(function, 
-          ns.size(), "Size of number of trials variable",
-          theta.rows(), "rows of probabilities parameter",
-          &lp))
-        return lp;
+      check_nonnegative(function, "Number of trials variable", ns);
+      check_simplex(function, "Probabilites parameter", theta);
+      check_size_match(function, 
+                       "Size of number of trials variable", ns.size(),
+                       "rows of probabilities parameter", theta.rows());
       using stan::math::multiply_log;
 
       if (include_summand<propto>::value) {     
@@ -71,23 +66,23 @@ namespace stan {
     multinomial_rng(const Eigen::Matrix<double,Eigen::Dynamic,1>& theta,
                     const int N,
                     RNG& rng) {
-      static const char* function = "stan::prob::multinomial_rng(%1%)";
-      using stan::math::check_simplex;
-      using stan::math::check_positive;
+      static const std::string function("stan::prob::multinomial_rng");
+      using stan::error_handling::check_simplex;
+      using stan::error_handling::check_positive;
 
-      check_simplex(function, theta, "Probabilites parameter");
-      check_positive(function,N,"number of trials variables");
+      check_simplex(function, "Probabilites parameter", theta);
+      check_positive(function, "number of trials variables", N);
 
-      std::vector<int> result(N,0);
+      std::vector<int> result(theta.size(),0);
       double mass_left = 1.0;
       int n_left = N;
       for (int k = 0; n_left > 0 && k < theta.size(); ++k) {
-        result[k] = binomial_rng(n_left,theta[k] / mass_left,rng);
+        double p = theta[k] / mass_left;
+        if (p > 1.0) p = 1.0;
+        result[k] = binomial_rng(n_left,p,rng);
         n_left -= result[k];
         mass_left -= theta[k];
       }
-      // for (int n = 0; n < N; ++n)
-      //   ++result[categorical_rng(theta,rng) - 1];
       return result;
     }
 

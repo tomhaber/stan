@@ -1,11 +1,14 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__WEIBULL_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__WEIBULL_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__WEIBULL_HPP
+#define STAN__PROB__DISTRIBUTIONS__WEIBULL_HPP
 
 #include <boost/random/weibull_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_nonnegative.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive_finite.hpp>
 #include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
@@ -16,19 +19,19 @@ namespace stan {
 
   namespace prob {
 
-    // Weibull(y|sigma,alpha)     [y >= 0;  sigma > 0;  alpha > 0]
+    // Weibull(y|alpha,sigma)     [y >= 0;  alpha > 0;  sigma > 0]
     // FIXME: document
     template <bool propto,
               typename T_y, typename T_shape, typename T_scale>
     typename return_type<T_y,T_shape,T_scale>::type
     weibull_log(const T_y& y, const T_shape& alpha, const T_scale& sigma) {
-      static const char* function = "stan::prob::weibull_log(%1%)";
+      static const std::string function("stan::prob::weibull_log");
 
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_positive;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
       using stan::math::value_of;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::multiply_log;
 
       // check if any vectors are zero length
@@ -39,25 +42,13 @@ namespace stan {
 
       // set up return value accumulator
       double logp(0.0);
-      if(!check_finite(function, y, "Random variable", &logp))
-        return logp;
-      if(!check_finite(function, alpha, "Shape parameter", 
-                       &logp))
-        return logp;
-      if(!check_positive(function, alpha, "Shape parameter",
-                         &logp))
-        return logp;
-      if(!check_not_nan(function, sigma, "Scale parameter",
-                        &logp))
-        return logp;
-      if(!check_positive(function, sigma, "Scale parameter", 
-                         &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,alpha,sigma,
-                                   "Random variable","Shape parameter","Scale parameter",
-                                   &logp)))
-        return logp;
+      check_finite(function, "Random variable", y);
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_positive_finite(function, "Scale parameter", sigma);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Shape parameter", alpha,
+                             "Scale parameter", sigma);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_shape,T_scale>::value)
@@ -132,8 +123,7 @@ namespace stan {
             + (1.0 - y_div_sigma_pow_alpha[n]) * (log_y[n] - log_sigma[n]);
         if (!is_constant_struct<T_scale>::value) 
           operands_and_partials.d_x3[n] 
-            += -alpha_dbl * inv_sigma[n]
-            + alpha_dbl * inv_sigma[n] * y_div_sigma_pow_alpha[n];
+            += alpha_dbl * inv_sigma[n] * ( y_div_sigma_pow_alpha[n] - 1.0 );
       }
       return operands_and_partials.to_var(logp);
     }
@@ -149,11 +139,10 @@ namespace stan {
     typename return_type<T_y,T_shape,T_scale>::type
     weibull_cdf(const T_y& y, const T_shape& alpha, const T_scale& sigma) {
 
-      static const char* function = "stan::prob::weibull_cdf(%1%)";
+      static const std::string function("stan::prob::weibull_cdf");
 
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_nonnegative;
       using boost::math::tools::promote_args;
       using stan::math::value_of;
 
@@ -164,16 +153,9 @@ namespace stan {
         return 1.0;
 
       double cdf(1.0);
-      if (!check_nonnegative(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_finite(function, alpha, "Shape parameter", &cdf))
-        return cdf;
-      if (!check_positive(function, alpha, "Shape parameter", &cdf))
-        return cdf;
-      if (!check_finite(function, sigma, "Scale parameter", &cdf))
-        return cdf;
-      if (!check_positive(function, sigma, "Scale parameter", &cdf))
-        return cdf;
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_positive_finite(function, "Scale parameter", sigma);
       
       agrad::OperandsAndPartials<T_y, T_shape, T_scale> 
         operands_and_partials(y, alpha, sigma);
@@ -220,11 +202,10 @@ namespace stan {
     typename return_type<T_y,T_shape,T_scale>::type
     weibull_cdf_log(const T_y& y, const T_shape& alpha, const T_scale& sigma) {
 
-      static const char* function = "stan::prob::weibull_cdf_log(%1%)";
+      static const std::string function("stan::prob::weibull_cdf_log");
 
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_nonnegative;
       using boost::math::tools::promote_args;
       using stan::math::value_of;
 
@@ -235,16 +216,9 @@ namespace stan {
         return 0.0;
 
       double cdf_log(0.0);
-      if (!check_nonnegative(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, alpha, "Shape parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, alpha, "Shape parameter", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, sigma, "Scale parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, sigma, "Scale parameter", &cdf_log))
-        return cdf_log;
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_positive_finite(function, "Scale parameter", sigma);
       
       agrad::OperandsAndPartials<T_y, T_shape, T_scale> 
         operands_and_partials(y, alpha, sigma);
@@ -259,10 +233,10 @@ namespace stan {
         const double alpha_dbl = value_of(alpha_vec[n]);
         const double pow_ = pow(y_dbl / sigma_dbl, alpha_dbl);
         const double exp_ = exp(-pow_);
-        const double cdf_log_ = 1.0 - exp_;
+        const double cdf_ = 1.0 - exp_;
 
         //cdf_log
-        cdf_log += log(cdf_log_);
+        cdf_log += log(cdf_);
 
         //gradients
         const double rep_deriv = pow_ / (1.0 / exp_ - 1.0);
@@ -281,11 +255,10 @@ namespace stan {
     typename return_type<T_y,T_shape,T_scale>::type
     weibull_ccdf_log(const T_y& y, const T_shape& alpha, const T_scale& sigma) {
 
-      static const char* function = "stan::prob::weibull_ccdf_log(%1%)";
+      static const std::string function("stan::prob::weibull_ccdf_log");
 
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_nonnegative;
       using boost::math::tools::promote_args;
       using stan::math::value_of;
 
@@ -296,16 +269,9 @@ namespace stan {
         return 0.0;
 
       double ccdf_log(0.0);
-      if (!check_nonnegative(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, alpha, "Shape parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, alpha, "Shape parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, sigma, "Scale parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, sigma, "Scale parameter", &ccdf_log))
-        return ccdf_log;
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_positive_finite(function, "Scale parameter", sigma);
       
       agrad::OperandsAndPartials<T_y, T_shape, T_scale> 
         operands_and_partials(y, alpha, sigma);
@@ -343,20 +309,12 @@ namespace stan {
       using boost::variate_generator;
       using boost::random::weibull_distribution;
 
-      static const char* function = "stan::prob::weibull_rng(%1%)";
+      static const std::string function("stan::prob::weibull_rng");
 
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_positive;
+      using stan::error_handling::check_positive_finite;
   
-      if(!check_finite(function, alpha, "Shape parameter"))
-        return 0;
-      if(!check_positive(function, alpha, "Shape parameter"))
-        return 0;
-      if(!check_not_nan(function, sigma, "Scale parameter"))
-        return 0;
-      if(!check_positive(function, sigma, "Scale parameter"))
-        return 0;
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_positive_finite(function, "Scale parameter", sigma);
 
       variate_generator<RNG&, weibull_distribution<> >
         weibull_rng(rng, weibull_distribution<>(alpha, sigma));

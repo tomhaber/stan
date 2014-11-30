@@ -1,11 +1,15 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__VON_MISES_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__VON_MISES_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__VON_MISES_HPP
+#define STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__VON_MISES_HPP
 
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
-#include <stan/math.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_greater.hpp>
+#include <stan/error_handling/scalar/check_nonnegative.hpp>
+#include <stan/error_handling/scalar/check_positive_finite.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
+#include <stan/prob/distributions/univariate/continuous/uniform.hpp>
 #include <stan/prob/traits.hpp>
 
 namespace stan { 
@@ -16,7 +20,7 @@ namespace stan {
              typename T_y, typename T_loc, typename T_scale>
     typename return_type<T_y,T_loc,T_scale>::type
     von_mises_log(T_y const& y, T_loc const& mu, T_scale const& kappa) {
-      static char const* const function = "stan::prob::von_mises_log(%1%)";
+      static char const* const function = "stan::prob::von_mises_log";
 
       // check if any vectors are zero length
       if (!(stan::length(y) 
@@ -25,29 +29,25 @@ namespace stan {
         return 0.0;
 
       using stan::is_constant_struct;
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_greater;
-      using stan::math::check_nonnegative;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_greater;
+      using stan::error_handling::check_nonnegative;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
 
       // Result accumulator.
       double logp = 0.0;
 
       // Validate arguments.
-      if (!check_finite(function, y, "Random variable", &logp))
-        return logp;
-      if(!check_finite(function, mu, "Location paramter", &logp))
-        return logp;
-      if(!check_finite(function, kappa, "Scale parameter", &logp))
-        return logp;
-      if(!check_positive(function, kappa, "Scale parameter", &logp))
-        return logp;
-      if(!check_consistent_sizes(function, y, mu, kappa, "Random variable",
-                                  "Location parameter", "Scale parameter",
-                                  &logp))
-        return logp;
+      check_finite(function, "Random variable", y);
+      check_finite(function, "Location paramter", mu);
+      check_positive_finite(function, "Scale parameter", kappa);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Location parameter", mu, 
+                             "Scale parameter", kappa);
+
  
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_loc,T_scale>::value) 
@@ -120,6 +120,53 @@ namespace stan {
     von_mises_log(T_y const& y, T_loc const& mu, T_scale const& kappa) {
       return von_mises_log<false>(y, mu, kappa);
     }
+
+    // The algorithm used in von_mises_rng is a modified version of the
+    // algorithm in:
+    //
+    // Efficient Simulation of the von Mises Distribution
+    // D. J. Best and N. I. Fisher
+    // Journal of the Royal Statistical Society. Series C (Applied Statistics), Vol. 28, No. 2 (1979), pp. 152-157
+    // 
+    // See licenses/stan-license.txt for Stan license.
+
+    template <class RNG>
+    inline double
+    von_mises_rng(const double mu,
+                  const double kappa,
+                  RNG& rng) {
+      using boost::variate_generator;
+      using stan::prob::uniform_rng;
+
+      static const std::string function("stan::prob::von_mises_rng");
+
+      stan::error_handling::check_finite(function, "mean", mu);
+      stan::error_handling::check_positive_finite(function, "inverse of variance", kappa);
+
+      double r = 1 + pow((1 + 4 * kappa * kappa), 0.5);
+      double rho = 0.5 * (r - pow(2 * r, 0.5)) / kappa;
+      double s = 0.5 * (1 + rho * rho) / rho;
+
+      bool done = 0;
+      double W;
+      while (!done) {
+        double Z = std::cos(stan::math::pi() * uniform_rng(0.0, 1.0, rng));
+        W = (1 + s * Z) / (s + Z);
+        double Y = kappa * (s - W);
+        double U2 = uniform_rng(0.0, 1.0, rng);
+        done = Y * (2 - Y) - U2 > 0;
+        
+        if(!done)
+          done = log(Y / U2) + 1 - Y >= 0;
+      }
+
+      double U3 = uniform_rng(0.0, 1.0, rng) - 0.5;
+      double sign = ((U3 >= 0) - (U3 <= 0));
+
+      //  it's really an fmod() with a positivity constraint
+      return sign * std::acos(W) + fmod(fmod(mu,2*stan::math::pi())+2*stan::math::pi(),2*stan::math::pi());
+    }
+
   } 
 }
 #endif

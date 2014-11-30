@@ -1,11 +1,11 @@
-#ifndef __STAN__AGRAD__REV__MATRIX__MDIVIDE_LEFT_TRI_HPP__
-#define __STAN__AGRAD__REV__MATRIX__MDIVIDE_LEFT_TRI_HPP__
+#ifndef STAN__AGRAD__REV__MATRIX__MDIVIDE_LEFT_TRI_HPP
+#define STAN__AGRAD__REV__MATRIX__MDIVIDE_LEFT_TRI_HPP
 
 #include <vector>
 #include <stan/math/matrix/Eigen.hpp>
 #include <stan/math/matrix/typedefs.hpp>
-#include <stan/math/matrix/validate_multiplicable.hpp>
-#include <stan/math/matrix/validate_square.hpp>
+#include <stan/error_handling/matrix/check_multiplicable.hpp>
+#include <stan/error_handling/matrix/check_square.hpp>
 #include <stan/agrad/rev/var.hpp>
 #include <stan/agrad/rev/matrix/typedefs.hpp>
 
@@ -297,8 +297,10 @@ namespace stan {
                      const Eigen::Matrix<var,R2,C2> &b) {
       Eigen::Matrix<var,R1,C2> res(b.rows(),b.cols());
       
-      stan::math::validate_square(A,"mdivide_left_tri");
-      stan::math::validate_multiplicable(A,b,"mdivide_left_tri");
+      stan::error_handling::check_square("mdivide_left_tri", "A", A);
+      stan::error_handling::check_multiplicable("mdivide_left_tri",
+                                                "A", A,
+                                                "b", b);
       
       // NOTE: this is not a memory leak, this vari is used in the 
       // expression graph to evaluate the adjoint, but is not needed
@@ -319,8 +321,10 @@ namespace stan {
                      const Eigen::Matrix<var,R2,C2> &b) {
       Eigen::Matrix<var,R1,C2> res(b.rows(),b.cols());
       
-      stan::math::validate_square(A,"mdivide_left_tri");
-      stan::math::validate_multiplicable(A,b,"mdivide_left_tri");
+      stan::error_handling::check_square("mdivide_left_tri", "A", A);
+      stan::error_handling::check_multiplicable("mdivide_left_tri",
+                                                "A", A,
+                                                "b", b);
       
       // NOTE: this is not a memory leak, this vari is used in the 
       // expression graph to evaluate the adjoint, but is not needed
@@ -341,8 +345,10 @@ namespace stan {
                      const Eigen::Matrix<double,R2,C2> &b) {
       Eigen::Matrix<var,R1,C2> res(b.rows(),b.cols());
       
-      stan::math::validate_square(A,"mdivide_left_tri");
-      stan::math::validate_multiplicable(A,b,"mdivide_left_tri");
+      stan::error_handling::check_square("mdivide_left_tri", "A", A);
+      stan::error_handling::check_multiplicable("mdivide_left_tri",
+                                                "A", A,
+                                                "b", b);
       
       // NOTE: this is not a memory leak, this vari is used in the 
       // expression graph to evaluate the adjoint, but is not needed

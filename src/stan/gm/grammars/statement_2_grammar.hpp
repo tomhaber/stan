@@ -1,5 +1,5 @@
-#ifndef __STAN__GM__PARSER__STATEMENT_2_GRAMMAR__HPP__
-#define __STAN__GM__PARSER__STATEMENT_2_GRAMMAR__HPP__
+#ifndef STAN__GM__PARSER__STATEMENT_2_GRAMMAR__HPP
+#define STAN__GM__PARSER__STATEMENT_2_GRAMMAR__HPP
 
 #include <string>
 #include <sstream>
@@ -10,7 +10,6 @@
 #include <stan/gm/ast.hpp>
 #include <stan/gm/grammars/whitespace_grammar.hpp>
 #include <stan/gm/grammars/expression_grammar.hpp>
-#include <stan/gm/grammars/var_decls_grammar.hpp>
 
 namespace stan { 
 
@@ -22,7 +21,7 @@ namespace stan {
     template <typename Iterator>
     struct statement_2_grammar 
       : boost::spirit::qi::grammar<Iterator,
-                                   statement(bool,var_origin),
+                                   statement(bool,var_origin,bool),
                                    whitespace_grammar<Iterator> > {
       
   
@@ -43,13 +42,13 @@ namespace stan {
       // rules
 
       boost::spirit::qi::rule<Iterator, 
-                              conditional_statement(bool,var_origin),
+                              conditional_statement(bool,var_origin,bool),
                               whitespace_grammar<Iterator> > 
       conditional_statement_r;
 
 
       boost::spirit::qi::rule<Iterator, 
-                              statement(bool,var_origin), 
+                              statement(bool,var_origin,bool), 
                               whitespace_grammar<Iterator> > 
       statement_2_r;
 

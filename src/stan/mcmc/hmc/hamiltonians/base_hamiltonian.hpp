@@ -1,5 +1,5 @@
-#ifndef __STAN__MCMC__BASE__HAMILTONIAN__BETA__
-#define __STAN__MCMC__BASE__HAMILTONIAN__BETA__
+#ifndef STAN__MCMC__BASE__HAMILTONIAN__BETA
+#define STAN__MCMC__BASE__HAMILTONIAN__BETA
 
 #include <stdexcept>
 #include <fstream>
@@ -18,7 +18,7 @@ namespace stan {
       
     public:
       
-      base_hamiltonian(M& m, std::ostream* e): _model(m), _err_stream(e) {};
+      base_hamiltonian(M& m, std::ostream* e): model_(m), err_stream_(e) {};
       ~base_hamiltonian() {}; 
       
       virtual double T(P& z) = 0;
@@ -43,9 +43,10 @@ namespace stan {
       virtual void update(P& z) {
         
         try {
-          z.V = - stan::model::log_prob_grad<true,true>(_model, z.q, z.g, _err_stream);
-        } catch (std::domain_error e) {
-          this->_write_error_msg(_err_stream, e);
+          stan::model::gradient(model_, z.q, z.V, z.g, err_stream_);
+          z.V *= -1;
+        } catch (const std::exception& e) {
+          this->write_error_msg_(err_stream_, e);
           z.V = std::numeric_limits<double>::infinity();
         }
         
@@ -55,18 +56,18 @@ namespace stan {
       
     protected: 
       
-        M& _model;
+        M& model_;
       
-        std::ostream* _err_stream;
+        std::ostream* err_stream_;
       
-        void _write_error_msg(std::ostream* error_msgs,
-                             const std::domain_error& e) {
+        void write_error_msg_(std::ostream* error_msgs,
+                              const std::exception& e) {
           
           if (!error_msgs) return;
           
           *error_msgs << std::endl
                       << "Informational Message: The current Metropolis proposal is about to be "
-                      << "rejected becuase of the following issue:"
+                      << "rejected because of the following issue:"
                       << std::endl
                       << e.what() << std::endl
                       << "If this warning occurs sporadically, such as for highly constrained "

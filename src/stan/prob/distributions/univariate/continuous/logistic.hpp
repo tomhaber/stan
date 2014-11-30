@@ -1,13 +1,16 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__LOGISTIC_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__LOGISTIC_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__LOGISTIC_HPP
+#define STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__LOGISTIC_HPP
 
 #include <boost/random/exponential_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive_finite.hpp>
 #include <stan/math/constants.hpp>
 #include <stan/math/functions/value_of.hpp>
+#include <stan/math/functions/log1p.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
 #include <stan/prob/traits.hpp>
@@ -21,11 +24,11 @@ namespace stan {
               typename T_y, typename T_loc, typename T_scale>
     typename return_type<T_y,T_loc,T_scale>::type
     logistic_log(const T_y& y, const T_loc& mu, const T_scale& sigma) {
-      static const char* function = "stan::prob::logistic_log(%1%)";
+      static const std::string function("stan::prob::logistic_log");
       
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
       using stan::prob::include_summand;
       
@@ -40,22 +43,13 @@ namespace stan {
       double logp(0.0);
         
       // validate args (here done over var, which should be OK)      
-      if (!check_finite(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_finite(function, mu, "Location parameter",
-                        &logp))
-        return logp;
-      if (!check_finite(function, sigma, "Scale parameter", &logp))
-        return logp;
-      if (!check_positive(function, sigma, "Scale parameter",
-                          &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,mu,sigma,
-                                   "Random variable","Location parameter",
-                                   "Scale parameter",
-                                   &logp)))
-        return logp;
+      check_finite(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
+      check_consistent_sizes(function,                             
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", sigma);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_loc,T_scale>::value)
@@ -152,29 +146,24 @@ namespace stan {
         return 1.0;
           
       // Error checks
-      static const char* function = "stan::prob::logistic_cdf(%1%)";
+      static const std::string function("stan::prob::logistic_cdf");
           
-      using stan::math::check_not_nan;
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
       using boost::math::tools::promote_args;
           
       double P(1.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, mu, "Location parameter", &P))
-        return P;
-      if (!check_finite(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, mu, sigma,
-                                   "Random variable", "Location parameter", 
-                                   "Scale parameter", &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Location parameter", mu, 
+                             "Scale parameter", sigma);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -251,29 +240,24 @@ namespace stan {
         return 0.0;
           
       // Error checks
-      static const char* function = "stan::prob::logistic_cdf_log(%1%)";
+      static const std::string function("stan::prob::logistic_cdf_log");
           
-      using stan::math::check_not_nan;
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
       using boost::math::tools::promote_args;
           
       double P(0.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, mu, "Location parameter", &P))
-        return P;
-      if (!check_finite(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, mu, sigma,
-                                   "Random variable", "Location parameter", 
-                                   "Scale parameter", &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Location parameter", mu, 
+                             "Scale parameter", sigma);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -335,29 +319,24 @@ namespace stan {
         return 0.0;
           
       // Error checks
-      static const char* function = "stan::prob::logistic_cdf_log(%1%)";
+      static const std::string function("stan::prob::logistic_cdf_log");
           
-      using stan::math::check_not_nan;
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
       using boost::math::tools::promote_args;
           
       double P(0.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, mu, "Location parameter", &P))
-        return P;
-      if (!check_finite(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, sigma, "Scale parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, mu, sigma,
-                                   "Random variable", "Location parameter", 
-                                   "Scale parameter", &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Location parameter", mu, 
+                             "Scale parameter", sigma);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -418,17 +397,13 @@ namespace stan {
       using boost::variate_generator;
       using boost::random::exponential_distribution;
 
-      static const char* function = "stan::prob::logistic_rng(%1%)";
+      static const std::string function("stan::prob::logistic_rng");
       
-      using stan::math::check_positive;
-      using stan::math::check_finite;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_finite;
 
-      if (!check_finite(function, mu, "Location parameter"))
-        return 0;
-      if (!check_finite(function, sigma, "Scale parameter"))
-        return 0;
-      if (!check_positive(function, sigma, "Scale parameter"))
-        return 0;
+      check_finite(function, "Location parameter", mu);
+      check_positive_finite(function, "Scale parameter", sigma);
 
       variate_generator<RNG&, exponential_distribution<> >
         exp_rng(rng, exponential_distribution<>(1));

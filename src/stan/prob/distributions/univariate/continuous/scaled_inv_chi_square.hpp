@@ -1,11 +1,13 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__SCALED_INV_CHI_SQUARE_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__SCALED_INV_CHI_SQUARE_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__SCALED_INV_CHI_SQUARE_HPP
+#define STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__SCALED_INV_CHI_SQUARE_HPP
 
 #include <boost/random/chi_squared_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_nonnegative.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive_finite.hpp>
 #include <stan/math/constants.hpp>
 #include <stan/math/functions/square.hpp>
 #include <stan/math/functions/multiply_log.hpp>
@@ -42,13 +44,11 @@ namespace stan {
               typename T_y, typename T_dof, typename T_scale>
     typename return_type<T_y,T_dof,T_scale>::type
     scaled_inv_chi_square_log(const T_y& y, const T_dof& nu, const T_scale& s) {
-      static const char* function 
-        = "stan::prob::scaled_inv_chi_square_log(%1%)";
+      static const std::string function("stan::prob::scaled_inv_chi_square_log");
       
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
 
       // check if any vectors are zero length
@@ -58,25 +58,13 @@ namespace stan {
         return 0.0;
 
       double logp(0.0);
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_finite(function, nu, "Degrees of freedom parameter",
-                        &logp))
-        return logp;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", 
-                          &logp))
-        return logp;
-      if (!check_finite(function, s, "Scale parameter", &logp))
-        return logp;
-      if (!check_positive(function, s, "Scale parameter", &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,nu,s,
-                                   "Random variable",
-                                   "Degrees of freedom parameter",
-                                   "Scale parameter",
-                                   &logp)))
-        return logp;
+      check_not_nan(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_positive_finite(function, "Scale parameter", s);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Degrees of freedom parameter", nu,
+                             "Scale parameter", s);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_dof,T_scale>::value)
@@ -200,36 +188,24 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu) && stan::length(s)))
         return 1.0;
       
-      static const char* function
-        = "stan::prob::scaled_inv_chi_square_cdf(%1%)";
+      static const std::string function("stan::prob::scaled_inv_chi_square_cdf");
           
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
+      using stan::error_handling::check_nonnegative;
       using stan::math::value_of;
           
       double P(1.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_nonnegative(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_finite(function, s, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, s, "Scale parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, nu, s,
-                                   "Random variable", 
-                                   "Degrees of freedom parameter",
-                                   "Scale parameter",
-                                   &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_positive_finite(function, "Scale parameter", s);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Degrees of freedom parameter", nu, 
+                             "Scale parameter", s);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -333,36 +309,24 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu) && stan::length(s)))
         return 0.0;
       
-      static const char* function
-        = "stan::prob::scaled_inv_chi_square_cdf_log(%1%)";
+      static const std::string function("stan::prob::scaled_inv_chi_square_cdf_log");
           
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
+      using stan::error_handling::check_nonnegative;
       using stan::math::value_of;
           
       double P(0.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_nonnegative(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_finite(function, s, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, s, "Scale parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, nu, s,
-                                   "Random variable", 
-                                   "Degrees of freedom parameter",
-                                   "Scale parameter",
-                                   &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_positive_finite(function, "Scale parameter", s);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Degrees of freedom parameter", nu, 
+                             "Scale parameter", s);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -452,36 +416,24 @@ namespace stan {
       if (!(stan::length(y) && stan::length(nu) && stan::length(s)))
         return 0.0;
       
-      static const char* function
-        = "stan::prob::scaled_inv_chi_square_ccdf_log(%1%)";
+      static const std::string function("stan::prob::scaled_inv_chi_square_ccdf_log");
           
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
+      using stan::error_handling::check_nonnegative;
       using stan::math::value_of;
           
       double P(0.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_nonnegative(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_positive(function, nu, "Degrees of freedom parameter", &P))
-        return P;
-      if (!check_finite(function, s, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, s, "Scale parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, nu, s,
-                                   "Random variable", 
-                                   "Degrees of freedom parameter",
-                                   "Scale parameter",
-                                   &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_positive_finite(function, "Scale parameter", s);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Degrees of freedom parameter", nu, 
+                             "Scale parameter", s);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -571,20 +523,12 @@ namespace stan {
       using boost::variate_generator;
       using boost::random::chi_squared_distribution;
 
-      static const char* function 
-        = "stan::prob::scaled_inv_chi_square_rng(%1%)";
+      static const std::string function("stan::prob::scaled_inv_chi_square_rng");
       
-      using stan::math::check_finite;
-      using stan::math::check_positive;
+      using stan::error_handling::check_positive_finite;
 
-      if (!check_finite(function, nu, "Degrees of freedom parameter"))
-        return 0;
-      if (!check_positive(function, nu, "Degrees of freedom parameter")) 
-        return 0;
-      if (!check_finite(function, s, "Scale parameter"))
-        return 0;
-      if (!check_positive(function, s, "Scale parameter"))
-        return 0;
+      check_positive_finite(function, "Degrees of freedom parameter", nu);
+      check_positive_finite(function, "Scale parameter", s);
 
       variate_generator<RNG&, chi_squared_distribution<> >
         chi_square_rng(rng, chi_squared_distribution<>(nu));

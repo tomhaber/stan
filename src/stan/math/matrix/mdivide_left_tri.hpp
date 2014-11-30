@@ -1,11 +1,11 @@
-#ifndef __STAN__MATH__MATRIX__MDIVIDE_LEFT_TRI_HPP__
-#define __STAN__MATH__MATRIX__MDIVIDE_LEFT_TRI_HPP__
+#ifndef STAN__MATH__MATRIX__MDIVIDE_LEFT_TRI_HPP
+#define STAN__MATH__MATRIX__MDIVIDE_LEFT_TRI_HPP
 
 #include <boost/math/tools/promotion.hpp>
 #include <stan/math/matrix/Eigen.hpp>
 #include <stan/math/matrix/promote_common.hpp>
-#include <stan/math/matrix/validate_multiplicable.hpp>
-#include <stan/math/matrix/validate_square.hpp>
+#include <stan/error_handling/matrix/check_multiplicable.hpp>
+#include <stan/error_handling/matrix/check_square.hpp>
 
 namespace stan {
   namespace math {
@@ -26,8 +26,10 @@ namespace stan {
                   R1,C2>
     mdivide_left_tri(const Eigen::Matrix<T1,R1,C1> &A,
                      const Eigen::Matrix<T2,R2,C2> &b) {
-      stan::math::validate_square(A,"mdivide_left_tri");
-      stan::math::validate_multiplicable(A,b,"mdivide_left_tri");
+      stan::error_handling::check_square("mdivide_left_tri", "A", A);
+      stan::error_handling::check_multiplicable("mdivide_left_tri",
+                                                "A", A,
+                                                "b", b);
       return promote_common<Eigen::Matrix<T1,R1,C1>,Eigen::Matrix<T2,R1,C1> >(A)
         .template triangularView<TriView>()
         .solve( promote_common<Eigen::Matrix<T1,R2,C2>,
@@ -45,7 +47,7 @@ namespace stan {
     inline 
     Eigen::Matrix<T,R1,C1> 
     mdivide_left_tri(const Eigen::Matrix<T,R1,C1> &A) {
-      stan::math::validate_square(A,"mdivide_left_tri");
+      stan::error_handling::check_square("mdivide_left_tri", "A", A);
       int n = A.rows();
       Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> b;
       b.setIdentity(n,n);

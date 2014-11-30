@@ -1,9 +1,9 @@
-#ifndef __STAN__MATH__MATRIX__SUB_ROW_HPP__
-#define __STAN__MATH__MATRIX__SUB_ROW_HPP__
+#ifndef STAN__MATH__MATRIX__SUB_ROW_HPP
+#define STAN__MATH__MATRIX__SUB_ROW_HPP
 
 #include <stan/math/matrix/Eigen.hpp>
-#include <stan/math/matrix/validate_row_index.hpp>
-#include <stan/math/matrix/validate_column_index.hpp>
+#include <stan/error_handling/matrix/check_row_index.hpp>
+#include <stan/error_handling/matrix/check_column_index.hpp>
 
 namespace stan {
 
@@ -22,9 +22,10 @@ namespace stan {
     Eigen::Matrix<T,1,Eigen::Dynamic>
     sub_row(const Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>& m,
                size_t i, size_t j, size_t ncols) {
-      validate_row_index(m,i,"sub_row");
-      validate_column_index(m,j,"sub_row");
-      if (ncols > 0) validate_column_index(m,j+ncols-1,"sub_row");
+      stan::error_handling::check_row_index("sub_row", "i", m, i);
+      stan::error_handling::check_column_index("sub_row", "j", m, j);
+      if (ncols > 0)
+        stan::error_handling::check_column_index("sub_col", "j+ncols-1", m, j+ncols-1);
       return m.block(i - 1,j - 1,1,ncols);
     }
 

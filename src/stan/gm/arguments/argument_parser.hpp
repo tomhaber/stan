@@ -1,5 +1,5 @@
-#ifndef __STAN__GM__ARGUMENTS__ARGUMENT__PARSER__HPP__
-#define __STAN__GM__ARGUMENTS__ARGUMENT__PARSER__HPP__
+#ifndef STAN__GM__ARGUMENTS__ARGUMENT__PARSER__HPP
+#define STAN__GM__ARGUMENTS__ARGUMENT__PARSER__HPP
 
 #include <string>
 #include <vector>
@@ -21,8 +21,7 @@ namespace stan {
       argument_parser(std::vector<argument*>& valid_args)
         : _arguments(valid_args),
           _help_flag(false),
-          _method_flag(false)
-      {
+          _method_flag(false) {
         _arguments.insert(_arguments.begin(), new arg_method());
       }
       
@@ -48,7 +47,7 @@ namespace stan {
         
         std::vector<argument*> unset_args = _arguments;
         
-        while(good_arg) {
+        while (good_arg) {
           
           if (args.size() == 0)
             break;
@@ -136,7 +135,7 @@ namespace stan {
           error_codes::OK : error_codes::USAGE;
       }
       
-      void print(std::ostream* s, const char prefix = '\0') {
+      void print(std::ostream* s, const std::string prefix = "") {
         if (!s) 
           return;
 
@@ -164,8 +163,8 @@ namespace stan {
         *s << std::left;
         
         *s << "Usage: " << executable << " <arg1> <subarg1_1> ... <subarg1_m>"
-          << " ... <arg_n> <subarg_n_1> ... <subarg_n_m>"
-          << std::endl << std::endl;
+           << " ... <arg_n> <subarg_n_1> ... <subarg_n_m>"
+           << std::endl << std::endl;
         
         *s << "Begin by selecting amongst the following inference methods"
            << " and diagnostics," << std::endl;

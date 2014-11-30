@@ -1,18 +1,20 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__DISCRETE__BERNOULLI_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__DISCRETE__BERNOULLI_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__UNIVARIATE__DISCRETE__BERNOULLI_HPP
+#define STAN__PROB__DISTRIBUTIONS__UNIVARIATE__DISCRETE__BERNOULLI_HPP
 
 #include <boost/random/bernoulli_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_bounded.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
 #include <stan/math/constants.hpp>
 #include <stan/math/functions/inv_logit.hpp>
 #include <stan/math/functions/log1m.hpp>
 #include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
-#include <stan/prob/traits.hpp>
 #include <stan/prob/constants.hpp>
+#include <stan/prob/traits.hpp>
 
 namespace stan {
 
@@ -24,13 +26,13 @@ namespace stan {
     typename return_type<T_prob>::type
     bernoulli_log(const T_n& n,
                   const T_prob& theta) {
-      static const char* function = "stan::prob::bernoulli_log(%1%)";
+      static const std::string function("stan::prob::bernoulli_log");
 
-      using stan::math::check_finite;
-      using stan::math::check_bounded;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_bounded;
       using stan::math::log1m;
       using stan::math::value_of;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_consistent_sizes;
       using stan::prob::include_summand;
       
       // check if any vectors are zero length
@@ -42,18 +44,12 @@ namespace stan {
       double logp(0.0);
 
       // validate args (here done over var, which should be OK)
-      if (!check_bounded(function, n, 0, 1, "n", &logp))
-        return logp;
-      if (!check_finite(function, theta, "Probability parameter", &logp))
-        return logp;
-      if (!check_bounded(function, theta, 0.0, 1.0,
-                         "Probability parameter", &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   n,theta,
-                                   "Random variable","Probability parameter",
-                                   &logp)))
-        return logp;
+      check_bounded(function, "n", n, 0, 1);
+      check_finite(function, "Probability parameter", theta);
+      check_bounded(function, "Probability parameter", theta, 0.0, 1.0);
+      check_consistent_sizes(function,
+                             "Random variable", n,
+                             "Probability parameter", theta);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_prob>::value)
@@ -130,13 +126,13 @@ namespace stan {
     template <bool propto, typename T_n, typename T_prob>
     typename return_type<T_prob>::type
     bernoulli_logit_log(const T_n& n, const T_prob& theta) {
-      static const char* function = "stan::prob::bernoulli_logit_log(%1%)";
+      static const std::string function("stan::prob::bernoulli_logit_log");
 
       using stan::is_constant_struct;
-      using stan::math::check_not_nan;
-      using stan::math::check_bounded;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_bounded;
       using stan::math::value_of;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_consistent_sizes;
       using stan::prob::include_summand;
       using stan::math::log1p;
       using stan::math::inv_logit;
@@ -150,16 +146,11 @@ namespace stan {
       double logp(0.0);
       
       // validate args (here done over var, which should be OK)
-      if (!check_bounded(function, n, 0, 1, "n", &logp))
-        return logp;
-      if (!check_not_nan(function, theta, "Logit transformed probability parameter",
-                         &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   n,theta,
-                                   "Random variable","Probability parameter",
-                                   &logp)))
-        return logp;
+      check_bounded(function, "n", n, 0, 1);
+      check_not_nan(function, "Logit transformed probability parameter", theta);
+      check_consistent_sizes(function,
+                             "Random variable", n,
+                             "Probability parameter", theta);
       
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_prob>::value)
@@ -217,11 +208,11 @@ namespace stan {
     template <typename T_n, typename T_prob>
     typename return_type<T_prob>::type
     bernoulli_cdf(const T_n& n, const T_prob& theta) {
-      static const char* function = "stan::prob::bernoulli_cdf(%1%)";
+      static const std::string function("stan::prob::bernoulli_cdf");
       
-      using stan::math::check_finite;
-      using stan::math::check_bounded;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_bounded;
+      using stan::error_handling::check_consistent_sizes;
       using stan::prob::include_summand;
           
       // Ensure non-zero argument lenghts
@@ -231,16 +222,11 @@ namespace stan {
       double P(1.0);
           
       // Validate arguments
-      if (!check_finite(function, theta, "Probability parameter", &P))
-        return P;
-      if (!check_bounded(function, theta, 0.0, 1.0,
-                         "Probability parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function,
-                                   n, theta,
-                                   "Random variable","Probability parameter",
-                                   &P)))
-        return P;
+      check_finite(function, "Probability parameter", theta);
+      check_bounded(function, "Probability parameter", theta, 0.0, 1.0);
+      check_consistent_sizes(function,
+                             "Random variable", n, 
+                             "Probability parameter", theta);
           
       // set up template expressions wrapping scalars into vector views
       VectorView<const T_n> n_vec(n);
@@ -282,11 +268,11 @@ namespace stan {
     template <typename T_n, typename T_prob>
     typename return_type<T_prob>::type
     bernoulli_cdf_log(const T_n& n, const T_prob& theta) {
-      static const char* function = "stan::prob::bernoulli_cdf_log(%1%)";
+      static const std::string function("stan::prob::bernoulli_cdf_log");
       
-      using stan::math::check_finite;
-      using stan::math::check_bounded;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_bounded;
+      using stan::error_handling::check_consistent_sizes;
       using stan::prob::include_summand;
           
       // Ensure non-zero argument lenghts
@@ -296,16 +282,11 @@ namespace stan {
       double P(0.0);
           
       // Validate arguments
-      if (!check_finite(function, theta, "Probability parameter", &P))
-        return P;
-      if (!check_bounded(function, theta, 0.0, 1.0,
-                         "Probability parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function,
-                                   n, theta,
-                                   "Random variable","Probability parameter",
-                                   &P)))
-        return P;
+      check_finite(function, "Probability parameter", theta);
+      check_bounded(function, "Probability parameter", theta, 0.0, 1.0);
+      check_consistent_sizes(function,
+                             "Random variable", n, 
+                             "Probability parameter", theta);
           
       // set up template expressions wrapping scalars into vector views
       VectorView<const T_n> n_vec(n);
@@ -344,11 +325,11 @@ namespace stan {
     template <typename T_n, typename T_prob>
     typename return_type<T_prob>::type
     bernoulli_ccdf_log(const T_n& n, const T_prob& theta) {
-      static const char* function = "stan::prob::bernoulli_ccdf_log(%1%)";
+      static const std::string function("stan::prob::bernoulli_ccdf_log");
       
-      using stan::math::check_finite;
-      using stan::math::check_bounded;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_bounded;
+      using stan::error_handling::check_consistent_sizes;
       using stan::prob::include_summand;
           
       // Ensure non-zero argument lenghts
@@ -358,16 +339,11 @@ namespace stan {
       double P(0.0);
           
       // Validate arguments
-      if (!check_finite(function, theta, "Probability parameter", &P))
-        return P;
-      if (!check_bounded(function, theta, 0.0, 1.0,
-                         "Probability parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function,
-                                   n, theta,
-                                   "Random variable","Probability parameter",
-                                   &P)))
-        return P;
+      check_finite(function, "Probability parameter", theta);
+      check_bounded(function, "Probability parameter", theta, 0.0, 1.0);
+      check_consistent_sizes(function,
+                             "Random variable", n, 
+                             "Probability parameter", theta);
           
       // set up template expressions wrapping scalars into vector views
       VectorView<const T_n> n_vec(n);
@@ -412,16 +388,13 @@ namespace stan {
       using boost::variate_generator;
       using boost::bernoulli_distribution;
 
-      static const char* function = "stan::prob::bernoulli_rng(%1%)";
+      static const std::string function("stan::prob::bernoulli_rng");
 
-      using stan::math::check_finite;
-      using stan::math::check_bounded;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_bounded;
  
-      if (!check_finite(function, theta, "Probability parameter"))
-        return 0;
-      if (!check_bounded(function, theta, 0.0, 1.0,
-                         "Probability parameter"))
-        return 0;
+      check_finite(function, "Probability parameter", theta);
+      check_bounded(function, "Probability parameter", theta, 0, 1);
 
       variate_generator<RNG&, bernoulli_distribution<> >
         bernoulli_rng(rng, bernoulli_distribution<>(theta));

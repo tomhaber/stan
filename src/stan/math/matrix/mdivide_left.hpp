@@ -1,11 +1,11 @@
-#ifndef __STAN__MATH__MATRIX__MDIVIDE_LEFT_HPP__
-#define __STAN__MATH__MATRIX__MDIVIDE_LEFT_HPP__
+#ifndef STAN__MATH__MATRIX__MDIVIDE_LEFT_HPP
+#define STAN__MATH__MATRIX__MDIVIDE_LEFT_HPP
 
 #include <boost/math/tools/promotion.hpp>
 #include <stan/math/matrix/Eigen.hpp>
 #include <stan/math/matrix/promote_common.hpp>
-#include <stan/math/matrix/validate_multiplicable.hpp>
-#include <stan/math/matrix/validate_square.hpp>
+#include <stan/error_handling/matrix/check_multiplicable.hpp>
+#include <stan/error_handling/matrix/check_square.hpp>
 
 namespace stan {
   namespace math {
@@ -23,8 +23,10 @@ namespace stan {
     Eigen::Matrix<typename boost::math::tools::promote_args<T1,T2>::type,R1,C2>
     mdivide_left(const Eigen::Matrix<T1,R1,C1> &A,
                  const Eigen::Matrix<T2,R2,C2> &b) {
-      stan::math::validate_square(A,"mdivide_left");
-      stan::math::validate_multiplicable(A,b,"mdivide_left");
+      stan::error_handling::check_square("mdivide_left", "A", A);
+      stan::error_handling::check_multiplicable("mdivide_left",
+                                                "A", A, 
+                                                "b", b);
       return promote_common<Eigen::Matrix<T1,R1,C1>,
                             Eigen::Matrix<T2,R1,C1> >(A)
         .lu()

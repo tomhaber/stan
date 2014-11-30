@@ -1,11 +1,14 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__PARETO_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__PARETO_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__PARETO_HPP
+#define STAN__PROB__DISTRIBUTIONS__PARETO_HPP
 
 #include <boost/random/exponential_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_greater_or_equal.hpp>
+#include <stan/error_handling/scalar/check_nonnegative.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive_finite.hpp>
 #include <stan/math/constants.hpp>
 #include <stan/math/functions/multiply_log.hpp>
 #include <stan/math/functions/value_of.hpp>
@@ -22,13 +25,12 @@ namespace stan {
               typename T_y, typename T_scale, typename T_shape>
     typename return_type<T_y,T_scale,T_shape>::type
     pareto_log(const T_y& y, const T_scale& y_min, const T_shape& alpha) {
-      static const char* function = "stan::prob::pareto_log(%1%)";
+      static const std::string function("stan::prob::pareto_log");
       
       using stan::math::value_of;
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
 
       // check if any vectors are zero length
       if (!(stan::length(y) 
@@ -40,21 +42,13 @@ namespace stan {
       double logp(0.0);
       
       // validate args (here done over var, which should be OK)
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_finite(function, y_min, "Scale parameter", &logp))
-        return logp;
-      if (!check_positive(function, y_min, "Scale parameter", &logp))
-        return logp;
-      if (!check_finite(function, alpha, "Shape parameter", &logp))
-        return logp;
-      if (!check_positive(function, alpha, "Shape parameter", &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,y_min,alpha,
-                                   "Random variable","Scale parameter","Shape parameter",
-                                   &logp)))
-        return logp;
+      check_not_nan(function, "Random variable", y);
+      check_positive_finite(function, "Scale parameter", y_min);
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Scale parameter", y_min,
+                             "Shape parameter", alpha);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_scale,T_shape>::value)
@@ -100,12 +94,6 @@ namespace stan {
         for (size_t n = 0; n < length(alpha); n++)
           log_alpha[n] = log(value_of(alpha_vec[n]));
       
-      DoubleVectorView<!is_constant_struct<T_shape>::value,
-                       is_vector<T_shape>::value> inv_alpha(length(alpha));
-      if (!is_constant_struct<T_shape>::value)
-        for (size_t n = 0; n < length(alpha); n++)
-          inv_alpha[n] = 1 / value_of(alpha_vec[n]);
-      
       using stan::math::multiply_log;
 
       for (size_t n = 0; n < N; n++) {
@@ -147,34 +135,25 @@ namespace stan {
         return 1.0;
           
       // Check errors
-      static const char* function = "stan::prob::pareto_cdf(%1%)";
+      static const std::string function("stan::prob::pareto_cdf");
           
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_not_nan;
-      using stan::math::check_greater_or_equal;
-      using stan::math::check_consistent_sizes;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_greater_or_equal;
+      using stan::error_handling::check_consistent_sizes;
+      using stan::error_handling::check_nonnegative;
       using stan::math::value_of;
           
       double P(1.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_nonnegative(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, y_min, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, y_min, "Scale parameter", &P))
-        return P;
-      if (!check_finite(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!check_positive(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, y_min, alpha,
-                                   "Random variable", "Scale parameter", 
-                                   "Shape parameter", &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Scale parameter", y_min);
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Scale parameter", y_min, 
+                             "Shape parameter", alpha);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -251,34 +230,25 @@ namespace stan {
         return 0.0;
           
       // Check errors
-      static const char* function = "stan::prob::pareto_cdf_log(%1%)";
+      static const std::string function("stan::prob::pareto_cdf_log");
           
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_not_nan;
-      using stan::math::check_greater_or_equal;
-      using stan::math::check_consistent_sizes;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_greater_or_equal;
+      using stan::error_handling::check_consistent_sizes;
+      using stan::error_handling::check_nonnegative;
       using stan::math::value_of;
           
       double P(0.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_nonnegative(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, y_min, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, y_min, "Scale parameter", &P))
-        return P;
-      if (!check_finite(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!check_positive(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, y_min, alpha,
-                                   "Random variable", "Scale parameter", 
-                                   "Shape parameter", &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Scale parameter", y_min);
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Scale parameter", y_min, 
+                             "Shape parameter", alpha);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -342,34 +312,25 @@ namespace stan {
         return 0.0;
           
       // Check errors
-      static const char* function = "stan::prob::pareto_ccdf_log(%1%)";
+      static const std::string function("stan::prob::pareto_ccdf_log");
           
-      using stan::math::check_finite;
-      using stan::math::check_positive;
-      using stan::math::check_not_nan;
-      using stan::math::check_greater_or_equal;
-      using stan::math::check_consistent_sizes;
-      using stan::math::check_nonnegative;
+      using stan::error_handling::check_positive_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_greater_or_equal;
+      using stan::error_handling::check_consistent_sizes;
+      using stan::error_handling::check_nonnegative;
       using stan::math::value_of;
           
       double P(0.0);
           
-      if (!check_not_nan(function, y, "Random variable", &P))
-        return P;
-      if (!check_nonnegative(function, y, "Random variable", &P))
-        return P;
-      if (!check_finite(function, y_min, "Scale parameter", &P))
-        return P;
-      if (!check_positive(function, y_min, "Scale parameter", &P))
-        return P;
-      if (!check_finite(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!check_positive(function, alpha, "Shape parameter", &P))
-        return P;
-      if (!(check_consistent_sizes(function, y, y_min, alpha,
-                                   "Random variable", "Scale parameter", 
-                                   "Shape parameter", &P)))
-        return P;
+      check_not_nan(function, "Random variable", y);
+      check_nonnegative(function, "Random variable", y);
+      check_positive_finite(function, "Scale parameter", y_min);
+      check_positive_finite(function, "Shape parameter", alpha);
+      check_consistent_sizes(function, 
+                             "Random variable", y, 
+                             "Scale parameter", y_min, 
+                             "Shape parameter", alpha);
           
       // Wrap arguments in vectors
       VectorView<const T_y> y_vec(y);
@@ -426,19 +387,12 @@ namespace stan {
       using boost::variate_generator;
       using boost::exponential_distribution;
 
-      static const char* function = "stan::prob::pareto_rng(%1%)";
+      static const std::string function("stan::prob::pareto_rng");
       
-      using stan::math::check_finite;
-      using stan::math::check_positive;
+      using stan::error_handling::check_positive_finite;
 
-      if (!check_finite(function, y_min, "Scale parameter"))
-        return 0;
-      if (!check_positive(function, y_min, "Scale parameter"))
-        return 0;
-      if (!check_finite(function, alpha, "Shape parameter"))
-        return 0;
-      if (!check_positive(function, alpha, "Shape parameter"))
-        return 0;
+      check_positive_finite(function, "Scale parameter", y_min);
+      check_positive_finite(function, "Shape parameter", alpha);
 
       variate_generator<RNG&, exponential_distribution<> >
         exp_rng(rng, exponential_distribution<>(alpha));

@@ -1,5 +1,5 @@
-#ifndef __STAN__GM__ARGUMENTS__CATEGORY__ARGUMENT__BETA__
-#define __STAN__GM__ARGUMENTS__CATEGORY__ARGUMENT__BETA__
+#ifndef STAN__GM__ARGUMENTS__CATEGORY__ARGUMENT__BETA
+#define STAN__GM__ARGUMENTS__CATEGORY__ARGUMENT__BETA
 
 #include <vector>
 #include <stan/gm/arguments/argument.hpp>
@@ -21,7 +21,7 @@ namespace stan {
         _subarguments.clear();
       }
       
-      void print(std::ostream* s, const int depth, const char prefix) {
+      void print(std::ostream* s, const int depth, const std::string prefix) {
         if (!s)
           return;
         std::string indent(compute_indent(depth), ' ');
@@ -71,7 +71,7 @@ namespace stan {
         bool good_arg = true;
         bool valid_arg = true;
         
-        while(good_arg) {
+        while (good_arg) {
           if (args.size() == 0)
             return valid_arg;
           

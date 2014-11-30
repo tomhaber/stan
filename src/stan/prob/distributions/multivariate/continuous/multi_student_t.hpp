@@ -1,19 +1,23 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__MULTI_STUDENT_T_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__MULTI_STUDENT_T_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__MULTI_STUDENT_T_HPP
+#define STAN__PROB__DISTRIBUTIONS__MULTI_STUDENT_T_HPP
 
 #include <cstdlib>
-
 #include <boost/math/special_functions/gamma.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
-
-#include <stan/math/error_handling.hpp>
-#include <stan/math/matrix_error_handling.hpp>
+#include <boost/random/variate_generator.hpp>
+#include <stan/error_handling/matrix/check_ldlt_factor.hpp>
+#include <stan/error_handling/matrix/check_size_match.hpp>
+#include <stan/error_handling/matrix/check_symmetric.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive.hpp>
+#include <stan/math/matrix/multiply.hpp>
+#include <stan/math/matrix/dot_product.hpp>
+#include <stan/math/matrix/subtract.hpp>
 #include <stan/prob/constants.hpp>
-#include <stan/prob/traits.hpp>
 #include <stan/prob/distributions/multivariate/continuous/multi_normal.hpp>
 #include <stan/prob/distributions/univariate/continuous/inv_gamma.hpp>
-
-#include <boost/random/variate_generator.hpp>
+#include <stan/prob/traits.hpp>
 
 namespace stan {
 
@@ -27,82 +31,107 @@ namespace stan {
      */
     template <bool propto,
               typename T_y, typename T_dof, typename T_loc, typename T_scale>
-    typename boost::math::tools::promote_args<T_y,T_dof,T_loc,T_scale>::type
-    multi_student_t_log(const Eigen::Matrix<T_y,Eigen::Dynamic,1>& y,
+    typename boost::math::tools::promote_args<typename scalar_type<T_y>::type,T_dof,typename scalar_type<T_loc>::type,T_scale>::type
+    multi_student_t_log(const T_y& y,
                         const T_dof& nu,
-                        const Eigen::Matrix<T_loc,Eigen::Dynamic,1>& mu,
+                        const T_loc& mu,
                         const 
                         Eigen::Matrix<T_scale,
                                       Eigen::Dynamic,Eigen::Dynamic>& Sigma) {
-      static const char* function = "stan::prob::multi_student_t(%1%)";
+      static const std::string function("stan::prob::multi_student_t");
 
-      using stan::math::check_size_match;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_symmetric;
-      using stan::math::check_positive;      
+      using stan::error_handling::check_size_match;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_symmetric;
+      using stan::error_handling::check_positive;      
       using boost::math::tools::promote_args;
       using boost::math::lgamma;
       using stan::math::log_determinant_ldlt;
-      using stan::math::mdivide_left_ldlt;
       using stan::math::LDLT_factor;
+      using stan::error_handling::check_ldlt_factor;
+
+      typedef typename boost::math::tools::promote_args<typename scalar_type<T_y>::type,T_dof,typename scalar_type<T_loc>::type,T_scale>::type lp_type;
+      lp_type lp(0.0);
       
-      typename promote_args<T_y,T_dof,T_loc,T_scale>::type lp(0.0);
-      if (!check_size_match(function, 
-          y.size(), "Size of random variable",
-          mu.size(), "size of location parameter",
-          &lp))
-        return lp;
-      if (!check_size_match(function, 
-          y.size(), "Size of random variable",
-          Sigma.rows(), "rows of scale parameter",
-          &lp))
-        return lp;
-      if (!check_size_match(function, 
-          y.size(), "Size of random variable",
-          Sigma.cols(), "columns of scale parameter",
-          &lp))
-        return lp;
-      if (!check_finite(function, mu, "Location parameter", &lp))
-        return lp;
-      if (!check_not_nan(function, y, "Random variable", &lp)) 
-        return lp;
-      if (!check_symmetric(function, Sigma, "Scale parameter", &lp))
-        return lp;
-
-      LDLT_factor<T_scale,Eigen::Dynamic,Eigen::Dynamic> ldlt_Sigma(Sigma);
-      if (!ldlt_Sigma.success()) {
-        std::ostringstream message;
-        message << "Scale matrix is not positive definite. " 
-        << "Sigma(0,0) is %1%.";
-        std::string str(message.str());
-        stan::math::dom_err(function,Sigma(0,0),"Scale matrix",str.c_str(),"",&lp);
-        return lp;
-      }
-
       // allows infinities
-      if (!check_not_nan(function, nu, 
-                         "Degrees of freedom parameter", &lp))
-        return lp;
-      if (!check_positive(function, nu, 
-                          "Degrees of freedom parameter", &lp))
-        return lp;
+      check_not_nan(function, "Degrees of freedom parameter", nu);
+      check_positive(function, "Degrees of freedom parameter", nu);
       
       using boost::math::isinf;
 
       if (isinf(nu)) // already checked nu > 0
         return multi_normal_log(y,mu,Sigma);
 
-      double d = y.size();
+      using Eigen::Matrix;
+      using Eigen::Dynamic;
+      using std::vector;
+      VectorViewMvt<const T_y> y_vec(y);
+      VectorViewMvt<const T_loc> mu_vec(mu);
+      //size of std::vector of Eigen vectors
+      size_t size_vec = max_size_mvt(y, mu);
+      
+      
+      //Check if every vector of the array has the same size
+      int size_y = y_vec[0].size();
+      int size_mu = mu_vec[0].size();
+      if (size_vec > 1) {
+        int size_y_old = size_y;
+        int size_y_new;
+        for (size_t i = 1, size_ = length_mvt(y); i < size_; i++) {
+          int size_y_new = y_vec[i].size();
+          check_size_match(function, 
+                           "Size of one of the vectors of the random variable", size_y_new,
+                           "Size of another vector of the random variable", size_y_old);
+          size_y_old = size_y_new;
+        }
+        int size_mu_old = size_mu;
+        int size_mu_new;
+        for (size_t i = 1, size_ = length_mvt(mu); i < size_; i++) {
+          int size_mu_new = mu_vec[i].size();
+          check_size_match(function, 
+                           "Size of one of the vectors of the location variable", size_mu_new, 
+                           "Size of another vector of the location variable", size_mu_old);
+          size_mu_old = size_mu_new;
+        }
+        (void) size_y_old;
+        (void) size_y_new;
+        (void) size_mu_old;
+        (void) size_mu_new;
+      }
+
+      
+      check_size_match(function, 
+                       "Size of random variable", size_y, 
+                       "size of location parameter", size_mu);
+      check_size_match(function, 
+                       "Size of random variable", size_y,
+                       "rows of scale parameter", Sigma.rows());
+      check_size_match(function, 
+                       "Size of random variable", size_y,
+                       "columns of scale parameter", Sigma.cols());
+      
+      for (size_t i = 0; i < size_vec; i++) {
+        check_finite(function, "Location parameter", mu_vec[i]);
+        check_not_nan(function, "Random variable", y_vec[i]);
+      }    
+      check_symmetric(function, "Scale parameter", Sigma);
+
+      
+      LDLT_factor<T_scale,Eigen::Dynamic,Eigen::Dynamic> ldlt_Sigma(Sigma);
+      check_ldlt_factor(function, "LDLT_Factor of scale parameter", ldlt_Sigma);
+
+      if (size_y == 0) //y_vec[0].size() == 0
+        return lp;
 
       if (include_summand<propto,T_dof>::value) {
-        lp += lgamma(0.5 * (nu + d));
-        lp -= lgamma(0.5 * nu);
-        lp -= (0.5 * d) * log(nu);
+        lp += lgamma(0.5 * (nu + size_y)) * size_vec;
+        lp -= lgamma(0.5 * nu) * size_vec;
+        lp -= (0.5 * size_y) * log(nu) * size_vec;
       }
 
       if (include_summand<propto>::value) 
-        lp -= (0.5 * d) * LOG_PI;
+        lp -= (0.5 * size_y) * LOG_PI * size_vec;
 
       using stan::math::multiply;
       using stan::math::dot_product;
@@ -111,30 +140,30 @@ namespace stan {
 
 
       if (include_summand<propto,T_scale>::value) {
-        lp -= 0.5*log_determinant_ldlt(ldlt_Sigma);
+        lp -= 0.5 * log_determinant_ldlt(ldlt_Sigma) * size_vec;
       }
 
       if (include_summand<propto,T_y,T_dof,T_loc,T_scale>::value) {
-        
-        Eigen::Matrix<typename promote_args<T_y,T_loc>::type,
-                      Eigen::Dynamic,
-                      1> y_minus_mu = subtract(y,mu);
-        Eigen::Matrix<typename promote_args<T_scale,T_y,T_loc>::type,
-                      Eigen::Dynamic,
-                      1> invSigma_dy = mdivide_left_ldlt(ldlt_Sigma, y_minus_mu);
-        lp -= 0.5 
-          * (nu + d)
-          * log(1.0 + dot_product(y_minus_mu,invSigma_dy) / nu);
+        lp_type sum_lp_vec(0.0);
+        for (size_t i = 0; i < size_vec; i++) {
+          Matrix<typename 
+              boost::math::tools::promote_args<typename scalar_type<T_y>::type, typename scalar_type<T_loc>::type>::type,
+              Dynamic, 1> y_minus_mu(size_y);
+          for (int j = 0; j < size_y; j++)
+            y_minus_mu(j) = y_vec[i](j)-mu_vec[i](j);
+          sum_lp_vec += log(1.0 + trace_inv_quad_form_ldlt(ldlt_Sigma,y_minus_mu) / nu);
+        }
+        lp -= 0.5 * (nu + size_y) * sum_lp_vec;
       }
       return lp;
     }
 
     template <typename T_y, typename T_dof, typename T_loc, typename T_scale>
     inline 
-    typename boost::math::tools::promote_args<T_y,T_dof,T_loc,T_scale>::type
-    multi_student_t_log(const Eigen::Matrix<T_y,Eigen::Dynamic,1>& y,
+    typename boost::math::tools::promote_args<typename scalar_type<T_y>::type,T_dof,typename scalar_type<T_loc>::type,T_scale>::type
+    multi_student_t_log(const T_y& y,
                         const T_dof& nu,
-                        const Eigen::Matrix<T_loc,Eigen::Dynamic,1>& mu,
+                        const T_loc& mu,
                         const 
                         Eigen::Matrix<T_scale,
                                       Eigen::Dynamic,Eigen::Dynamic>& Sigma) {
@@ -149,19 +178,17 @@ namespace stan {
                         const Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>& s,
                      RNG& rng) {
 
-      static const char* function = "stan::prob::multi_student_t_rng(%1%)";
+      static const std::string function("stan::prob::multi_student_t_rng");
 
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_symmetric;
-      using stan::math::check_positive;      
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_symmetric;
+      using stan::error_handling::check_positive;      
  
-      check_finite(function, mu, "Location parameter");
-      check_symmetric(function, s, "Scale parameter");
-      check_not_nan(function, nu, 
-                    "Degrees of freedom parameter");
-      check_positive(function, nu, 
-                     "Degrees of freedom parameter");
+      check_finite(function, "Location parameter", mu);
+      check_symmetric(function, "Scale parameter", s);
+      check_not_nan(function, "Degrees of freedom parameter", nu);
+      check_positive(function, "Degrees of freedom parameter", nu);
 
       Eigen::VectorXd z(s.cols());
       z.setZero();

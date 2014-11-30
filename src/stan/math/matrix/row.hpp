@@ -1,8 +1,9 @@
-#ifndef __STAN__MATH__MATRIX__ROW_HPP__
-#define __STAN__MATH__MATRIX__ROW_HPP__
+#ifndef STAN__MATH__MATRIX__ROW_HPP
+#define STAN__MATH__MATRIX__ROW_HPP
 
 #include <stan/math/matrix/Eigen.hpp>
-#include <stan/math/matrix/validate_row_index.hpp>
+#include <stan/error_handling/scalar/check_greater_or_equal.hpp>
+#include <stan/error_handling/scalar/check_less_or_equal.hpp>
 
 namespace stan {
   namespace math {
@@ -24,7 +25,8 @@ namespace stan {
     Eigen::Matrix<T,1,Eigen::Dynamic>
     row(const Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>& m, 
         size_t i) {
-      validate_row_index(m,i,"row");
+      stan::error_handling::check_greater_or_equal("row", "i", i, 1U);
+      stan::error_handling::check_less_or_equal("row", "i", i, static_cast<size_t>(m.rows()));     
       return m.row(i - 1);
     }
 

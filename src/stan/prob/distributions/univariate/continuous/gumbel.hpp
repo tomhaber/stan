@@ -1,11 +1,13 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__GUMBEL_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__GUMBEL_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__GUMBEL_HPP
+#define STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__GUMBEL_HPP
 
 #include <boost/random/uniform_01.hpp>
 #include <boost/random/variate_generator.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
 #include <stan/prob/traits.hpp>
@@ -19,15 +21,15 @@ namespace stan {
     template <bool propto, typename T_y, typename T_loc, typename T_scale>
     typename return_type<T_y,T_loc,T_scale>::type
     gumbel_log(const T_y& y, const T_loc& mu, const T_scale& beta) {
-      static const char* function = "stan::prob::gumbel_log(%1%)";
+      static const std::string function("stan::prob::gumbel_log");
 
       using std::log;
       using std::exp;
       using stan::is_constant_struct;
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
       using stan::prob::include_summand;
 
@@ -41,19 +43,13 @@ namespace stan {
       double logp(0.0);
 
       // validate args (here done over var, which should be OK)
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_finite(function, mu, "Location parameter", 
-                        &logp))
-        return logp;
-      if (!check_positive(function, beta, "Scale parameter", 
-                          &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,mu,beta,
-                                   "Random variable","Location parameter","Scale parameter",
-                                   &logp)))
-        return logp;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_positive(function, "Scale parameter", beta);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", beta);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_loc,T_scale>::value)
@@ -116,12 +112,12 @@ namespace stan {
     template <typename T_y, typename T_loc, typename T_scale>
     typename return_type<T_y,T_loc,T_scale>::type
     gumbel_cdf(const T_y& y, const T_loc& mu, const T_scale& beta) {
-      static const char* function = "stan::prob::gumbel_cdf(%1%)";
+      static const std::string function("stan::prob::gumbel_cdf");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
 
       double cdf(1.0);
@@ -131,18 +127,14 @@ namespace stan {
             && stan::length(beta)))
         return cdf;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_finite(function, mu, "Location parameter", &cdf))
-        return cdf;
-      if (!check_not_nan(function, beta, "Scale parameter", &cdf))
-        return cdf;
-      if (!check_positive(function, beta, "Scale parameter", &cdf))
-        return cdf;
-      if (!(check_consistent_sizes(function, y,mu,beta,
-                                   "Random variable","Location parameter",
-                                   "Scale parameter", &cdf)))
-        return cdf;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_not_nan(function, "Scale parameter", beta);
+      check_positive(function, "Scale parameter", beta);
+      check_consistent_sizes(function, 
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", beta);
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale> 
         operands_and_partials(y, mu, beta);
@@ -189,12 +181,12 @@ namespace stan {
     template <typename T_y, typename T_loc, typename T_scale>
     typename return_type<T_y,T_loc,T_scale>::type
     gumbel_cdf_log(const T_y& y, const T_loc& mu, const T_scale& beta) {
-      static const char* function = "stan::prob::gumbel_cdf_log(%1%)";
+      static const std::string function("stan::prob::gumbel_cdf_log");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
 
       double cdf_log(0.0);
@@ -204,18 +196,14 @@ namespace stan {
             && stan::length(beta)))
         return cdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, mu, "Location parameter", &cdf_log))
-        return cdf_log;
-      if (!check_not_nan(function, beta, "Scale parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, beta, "Scale parameter", &cdf_log))
-        return cdf_log;
-      if (!(check_consistent_sizes(function, y,mu,beta,
-                                   "Random variable","Location parameter",
-                                   "Scale parameter", &cdf_log)))
-        return cdf_log;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_not_nan(function, "Scale parameter", beta);
+      check_positive(function, "Scale parameter", beta);
+      check_consistent_sizes(function, 
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", beta);
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale> 
         operands_and_partials(y, mu, beta);
@@ -247,12 +235,12 @@ namespace stan {
     template <typename T_y, typename T_loc, typename T_scale>
     typename return_type<T_y,T_loc,T_scale>::type
     gumbel_ccdf_log(const T_y& y, const T_loc& mu, const T_scale& beta) {
-      static const char* function = "stan::prob::gumbel_ccdf_log(%1%)";
+      static const std::string function("stan::prob::gumbel_ccdf_log");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
 
       double ccdf_log(0.0);
@@ -262,18 +250,14 @@ namespace stan {
             && stan::length(beta)))
         return ccdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, mu, "Location parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_not_nan(function, beta, "Scale parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, beta, "Scale parameter", &ccdf_log))
-        return ccdf_log;
-      if (!(check_consistent_sizes(function, y,mu,beta,
-                                   "Random variable","Location parameter",
-                                   "Scale parameter", &ccdf_log)))
-        return ccdf_log;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_not_nan(function, "Scale parameter", beta);
+      check_positive(function, "Scale parameter", beta);
+      check_consistent_sizes(function, 
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", beta);
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale> 
         operands_and_partials(y, mu, beta);
@@ -312,16 +296,14 @@ namespace stan {
       using boost::variate_generator;
       using boost::uniform_01;
 
-      static const char* function = "stan::prob::gumbel_rng(%1%)";
+      static const std::string function("stan::prob::gumbel_rng");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
 
 
-      if (!check_finite(function, mu, "Location parameter"))
-        return 0;
-      if (!check_positive(function, beta, "Scale parameter")) 
-        return 0;
+      check_finite(function, "Location parameter", mu);
+      check_positive(function, "Scale parameter", beta); 
 
       variate_generator<RNG&, uniform_01<> >
         uniform01_rng(rng, uniform_01<>());

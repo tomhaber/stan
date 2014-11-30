@@ -1,23 +1,17 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__MULTIVARIATE__CONTINUOUS__GAUSSIAN_DLM_OBS_HPP__
-#define __STAN__PROB__DISTRIBUTIONS__MULTIVARIATE__CONTINUOUS__GAUSSIAN_DLM_OBS_HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__MULTIVARIATE__CONTINUOUS__GAUSSIAN_DLM_OBS_HPP
+#define STAN__PROB__DISTRIBUTIONS__MULTIVARIATE__CONTINUOUS__GAUSSIAN_DLM_OBS_HPP
 
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
-
-#include <stan/math/matrix_error_handling.hpp>
-#include <stan/math/error_handling.hpp>
-#include <stan/math/error_handling/dom_err.hpp>
-#include <stan/prob/constants.hpp>
-#include <stan/prob/traits.hpp>
-#include <stan/agrad/rev.hpp>
-#include <stan/meta/traits.hpp>
-#include <stan/agrad/rev/matrix.hpp>
-#include <stan/agrad/rev/matrix/to_var.hpp>
-
+#include <stan/error_handling/matrix/check_cov_matrix.hpp>
+#include <stan/error_handling/matrix/check_size_match.hpp>
+#include <stan/error_handling/matrix/check_spsd_matrix.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_nonnegative.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
 #include <stan/math/matrix/add.hpp>
 #include <stan/math/matrix/dot_product.hpp>
 #include <stan/math/matrix/inverse_spd.hpp>
-#include <stan/math/matrix/ldlt.hpp>
 #include <stan/math/matrix/log.hpp>
 #include <stan/math/matrix/log_determinant_spd.hpp>
 #include <stan/math/matrix/multiply.hpp>
@@ -26,6 +20,9 @@
 #include <stan/math/matrix/tcrossprod.hpp>
 #include <stan/math/matrix/trace_quad_form.hpp>
 #include <stan/math/matrix/transpose.hpp>
+#include <stan/meta/traits.hpp>
+#include <stan/prob/constants.hpp>
+#include <stan/prob/traits.hpp>
 
 /*
   TODO: time-varying system matrices
@@ -85,18 +82,18 @@ namespace stan {
                      const Eigen::Matrix<T_W,Eigen::Dynamic,Eigen::Dynamic>& W,
                      const Eigen::Matrix<T_m0,Eigen::Dynamic,1>& m0,
                      const Eigen::Matrix<T_C0,Eigen::Dynamic,Eigen::Dynamic>& C0) {
-      static const char* function = "stan::prob::gaussian_dlm_obs_log(%1%)";
+      static const std::string function("stan::prob::gaussian_dlm_obs_log");
       typedef typename return_type<
         T_y,
         typename return_type<T_F,T_G,T_V,T_W,T_m0,T_C0>::type  >::type T_lp;
       T_lp lp(0.0);
 
       using stan::math::add;
-      using stan::math::check_cov_matrix;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_size_match;
-      using stan::math::check_spsd_matrix;
+      using stan::error_handling::check_cov_matrix;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_size_match;
+      using stan::error_handling::check_spsd_matrix;
       using stan::math::inverse_spd;
       using stan::math::log_determinant_spd;
       using stan::math::multiply;
@@ -110,83 +107,52 @@ namespace stan {
       int n = G.rows(); // number of states
 
       // check y
-      if (!check_finite(function, y, "y", &lp))
-        return lp;
-      if (!check_not_nan(function, y, "y", &lp))
-        return lp;
+      check_finite(function, "y", y);
+      check_not_nan(function, "y", y);
       // check F
-      if (!check_size_match(function,
-                            F.cols(), "columns of F",
-                            y.rows(), "rows of y",
-                            &lp))
-        return lp;
-      if (!check_size_match(function,
-                            F.rows(), "rows of F",
-                            G.rows(), "rows of G",
-                            &lp))
-        return lp;
-      if (!check_finite(function, F, "F", &lp))
-        return lp;
-      if (!check_not_nan(function, F, "F", &lp))
-        return lp;
+      check_size_match(function,
+                       "columns of F", F.cols(), 
+                       "rows of y", y.rows());
+      check_size_match(function,
+                       "rows of F", F.rows(), 
+                       "rows of G", G.rows());
+      check_finite(function, "F", F);
+      check_not_nan(function, "F", F);
       // check G
-      if (!check_size_match(function,
-                            G.rows(), "rows of G",
-                            G.cols(), "columns of G",
-                            &lp))
-        return lp;
-      if (!check_finite(function, G, "G", &lp))
-        return lp;
-      if (!check_not_nan(function, G, "G", &lp))
-        return lp;
+      check_size_match(function,
+                       "rows of G", G.rows(),
+                       "columns of G", G.cols());
+      check_finite(function, "G", G);
+      check_not_nan(function, "G", G);
       // check V
-      if (!check_size_match(function,
-                            V.rows(), "rows of V",
-                            y.rows(), "rows of y",
-                            &lp))
-        return lp;
+      check_size_match(function,
+                       "rows of V", V.rows(),
+                       "rows of y", y.rows());
       // TODO: incorporate support for infinite V
-      if (!check_finite(function, V, "V", &lp))
-        return lp;
-      if (!check_not_nan(function, V, "V", &lp))
-        return lp;
-      if (!check_spsd_matrix(function, V, "V", &lp))
-        return lp;
+      check_finite(function, "V", V);
+      check_not_nan(function, "V", V);
+      check_spsd_matrix(function, "V", V);
       // check W
-      if (!check_size_match(function,
-                            W.rows(), "rows of W",
-                            G.rows(), "rows of G",
-                            &lp))
-        return lp;
+      check_size_match(function,
+                       "rows of W", W.rows(),
+                       "rows of G", G.rows());
       // TODO: incorporate support for infinite W
-      if (!check_finite(function, W, "W", &lp))
-        return lp;
-      if (!check_not_nan(function, W, "W", &lp))
-        return lp;
-      if (!check_spsd_matrix(function, W, "W", &lp))
-        return lp;
+      check_finite(function, "W", W);
+      check_not_nan(function, "W", W);
+      check_spsd_matrix(function, "W", W);
       // check m0
-      if (!check_size_match(function,
-                            m0.size(), "size of m0",
-                            G.rows(), "rows of G",
-                            &lp))
-        return lp;
-      if (!check_finite(function, m0, "m0", &lp))
-        return lp;
-      if (!check_not_nan(function, m0, "m0", &lp))
-        return lp;
+      check_size_match(function,
+                       "size of m0", m0.size(),
+                       "rows of G", G.rows());
+      check_finite(function, "m0", m0);
+      check_not_nan(function, "m0", m0);
       // check C0
-      if (!check_size_match(function,
-                            C0.rows(), "rows of C0",
-                            G.rows(), "rows of G",
-                            &lp))
-        return lp;
-      if (!check_cov_matrix(function, C0, "C0", &lp))
-        return lp;
-      if (!check_finite(function, C0, "C0", &lp))
-        return lp;
-      if (!check_not_nan(function, C0, "C0", &lp))
-        return lp;
+      check_size_match(function,
+                       "rows of C0", C0.rows(), 
+                       "rows of G", G.rows());
+      check_cov_matrix(function, "C0", C0);
+      check_finite(function, "C0", C0);
+      check_not_nan(function, "C0", C0);
 
       if (y.cols() == 0 || y.rows() == 0)
         return lp;
@@ -317,19 +283,19 @@ namespace stan {
                      const Eigen::Matrix<T_W,Eigen::Dynamic,Eigen::Dynamic>& W,
                      const Eigen::Matrix<T_m0,Eigen::Dynamic,1>& m0,
                      const Eigen::Matrix<T_C0,Eigen::Dynamic,Eigen::Dynamic>& C0) {
-      static const char* function = "stan::prob::gaussian_dlm_obs_log(%1%)";
+      static const std::string function("stan::prob::gaussian_dlm_obs_log");
       typedef typename return_type<
         T_y,
         typename return_type<T_F,T_G,T_V,T_W,T_m0,T_C0>::type  >::type T_lp;
       T_lp lp(0.0);
 
       using stan::math::add;
-      using stan::math::check_cov_matrix;
-      using stan::math::check_finite;
-      using stan::math::check_nonnegative;
-      using stan::math::check_not_nan;
-      using stan::math::check_size_match;
-      using stan::math::check_spsd_matrix;
+      using stan::error_handling::check_cov_matrix;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_nonnegative;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_size_match;
+      using stan::error_handling::check_spsd_matrix;
       using stan::math::dot_product;
       using stan::math::multiply;
       using stan::math::quad_form_sym;
@@ -343,83 +309,52 @@ namespace stan {
       int n = G.rows(); // number of states
 
       // check y
-      if (!check_finite(function, y, "y", &lp))
-        return lp;
-      if (!check_not_nan(function, y, "y", &lp))
-        return lp;
+      check_finite(function, "y", y);
+      check_not_nan(function, "y", y);
       // check F
-      if (!check_size_match(function,
-                            F.cols(), "columns of F",
-                            y.rows(), "rows of y",
-                            &lp))
-        return lp;
-      if (!check_size_match(function,
-                            F.rows(), "rows of F",
-                            G.rows(), "rows of G",
-                            &lp))
-        return lp;
-      if (!check_finite(function, F, "F", &lp))
-        return lp;
-      if (!check_not_nan(function, F, "F", &lp))
-        return lp;
+      check_size_match(function,
+                       "columns of F", F.cols(),
+                       "rows of y", y.rows());
+      check_size_match(function,
+                       "rows of F", F.rows(), 
+                       "rows of G", G.rows());
+      check_finite(function, "F", F);
+      check_not_nan(function, "F", F);
       // check G
-      if (!check_size_match(function,
-                            G.rows(), "rows of G",
-                            G.cols(), "columns of G",
-                            &lp))
-        return lp;
-      if (!check_finite(function, G, "G", &lp))
-        return lp;
-      if (!check_not_nan(function, G, "G", &lp))
-        return lp;
+      check_size_match(function,
+                       "rows of G", G.rows(), 
+                       "columns of G", G.cols());
+      check_finite(function, "G", G);
+      check_not_nan(function, "G", G);
       // check V
-      if (!check_nonnegative(function, V, "V", &lp))
-        return lp;
-      if (!check_size_match(function,
-                            V.size(), "size of V",
-                            y.rows(), "rows of y",
-                            &lp))
-        return lp;
+      check_nonnegative(function, "V", V);
+      check_size_match(function,
+                       "size of V", V.size(), 
+                       "rows of y", y.rows());
       // TODO: support infinite V
-      if (!check_finite(function, V, "V", &lp))
-        return lp;
-      if (!check_not_nan(function, V, "V", &lp))
-        return lp;
+      check_finite(function, "V", V);
+      check_not_nan(function, "V", V);
       // check W
-      if (!check_spsd_matrix(function, W, "W", &lp))
-        return lp;
-      if (!check_size_match(function,
-                            W.rows(), "rows of W",
-                            G.rows(), "rows of G",
-                            &lp))
-        return lp;
+      check_spsd_matrix(function, "W", W);
+      check_size_match(function,
+                       "rows of W", W.rows(),
+                       "rows of G", G.rows());
       // TODO: support infinite W
-      if (!check_finite(function, W, "W", &lp))
-        return lp;
-      if (!check_not_nan(function, W, "W", &lp))
-        return lp;
+      check_finite(function, "W", W);
+      check_not_nan(function, "W", W);
       // check m0
-      if (!check_size_match(function,
-                            m0.size(), "size of m0",
-                            G.rows(), "rows of G",
-                            &lp))
-        return lp;
-      if (!check_finite(function, m0, "m0", &lp))
-        return lp;
-      if (!check_not_nan(function, m0, "m0", &lp))
-        return lp;
+      check_size_match(function,
+                       "size of m0", m0.size(),
+                       "rows of G", G.rows());
+      check_finite(function, "m0", m0);
+      check_not_nan(function, "m0", m0);
       // check C0
-      if (!check_cov_matrix(function, C0, "C0", &lp))
-        return lp;
-      if (!check_size_match(function,
-                            C0.rows(), "rows of C0",
-                            G.rows(), "rows of G",
-                            &lp))
-        return lp;
-      if (!check_finite(function, C0, "C0", &lp))
-        return lp;
-      if (!check_not_nan(function, C0, "C0", &lp))
-        return lp;
+      check_cov_matrix(function, "C0", C0);
+      check_size_match(function,
+                       "rows of C0", C0.rows(), 
+                       "rows of G", G.rows());
+      check_finite(function, "C0", C0);
+      check_not_nan(function, "C0", C0);
 
       if (y.cols() == 0 || y.rows() == 0)
         return lp;

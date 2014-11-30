@@ -1,10 +1,600 @@
 \part{Additional Topics}
 
 
+\chapter{Point Estimation}\label{mle.chapter}
+
+\noindent
+This chapter defines the workhorses of non-Bayesian estimation,
+maximum likelihood and penalized maximum likelihood, and relates them
+to Bayesian point estimation based on posterior means, medians, and
+modes.  Such estimates are called ``point estimates'' because they
+are composed of a single value for the model parameters $\theta$
+rather than a posterior distribution.
+
+Stan's optimizer can be used to implement (penalized) maximum
+likelihood estimation for any likelihood function and penalty function
+that can be coded in Stan's modeling language.  Stan's optimizer can
+also be used for point estimation in Bayesian settings based on
+posterior modes.  Stan's Markov chain Monte Carlo samplers can be used
+to implement point inference in Bayesian models based on posterior
+means or medians.
+
+\section{Maximum Likelihood Estimation}\label{mle.section}
+
+Given a likelihood function $p(y|\theta)$ and a fixed data vector $y$,
+the maximum likelihood estimate (MLE) is the parameter vector $\hat{\theta}$
+that maximizes the likelihood, i.e., 
+\[
+\hat{\theta} = \mbox{argmax}_{\theta} \ p(y|\theta).
+\]
+It is usually more convenient to work on the log scale.  
+An equivalent%
+%
+\footnote{The equivalence follows from the fact that densities are
+  positive and the log function is strictly monotonic, i.e., 
+  $p(y|\theta) \geq 0$ and for all $a, b > 0$, $\log a > \log b$ if and
+  only if $a > b$.}
+%
+formulation of the MLE is
+%
+\[
+\hat{\theta} = \mbox{argmax}_{\theta} \ \log p(y|\theta).
+\]
+
+\subsection{Existence of Maximum Likelihood Estimates}
+
+Because not all functions have unique maximum values, maximum
+likelihood estimates are not guaranteed to exist.  As discussed in
+\refchapter{problematic-posteriors}, this situation can arise when
+%
+\begin{itemize}
+\item there is more than one point that maximizes the likelihood function,
+\item the likelihood function is unbounded, or
+\item the likelihood function is bounded by an asymptote that is never
+  reached for legal parameter values.
+\end{itemize}
+%
+These problems persist with the penalized maximum likelihood estimates
+discussed in the next section, and Bayesian posterior modes as
+discussed in the following section.  
+
+
+\subsection{Example: Linear Regression}
+
+Consider an ordinary linear regression problem with an $N$-dimensional
+vector of observations $y$, an $(N \times K)$-dimensional data matrix
+$x$ of predictors, a $K$-dimensional parameter vector $\beta$ of
+regression coefficients, and a real-valued noise scale $\sigma > 0$,
+with log likelihood function
+\[
+\log p(y|\beta,x) = \sum_{n=1}^N \log \distro{Normal}(y_n|x_n \beta,
+\sigma).
+\]
+%
+The maximum likelihood estimate for $\theta = (\beta,\sigma)$ is just
+\[
+(\hat{\beta},\hat{\sigma})
+\ = \
+\mbox{argmax}_{\beta,\sigma} 
+\log p(y|\beta,\sigma,x) = \sum_{n=1}^N \log \distro{Normal}(y_n|x_n \beta, \sigma).
+\]
+
+\subsubsection{Squared Error}
+
+A little algebra on the log likelihood function shows that the
+marginal maximum likelihood estimate $\hat{\theta} =
+(\hat{\beta},\hat{\sigma})$ can be equivalently formulated for
+$\hat{\beta}$ in terms of least squares.  That is, $\hat{\beta}$ is
+the value for the coefficient vector that minimizes the sum of squared
+prediction errors,
+%
+\[
+\hat{\beta} 
+\ = \
+\mbox{argmin}_{\beta} \sum_{n=1}^N (y_n - x_n \beta)^2
+\ = \ 
+\mbox{argmin}_{\beta} (y - x \beta)^{\top} (y - x\beta).
+\]
+%
+The residual error for data item $n$ is the difference between the
+actual value and predicted value, $y_n - x_n \hat{\beta}$.  The
+maximum likelihood estimate for the noise scale, $\hat{\sigma}$ is
+just the square root of the average squared residual, 
+\[
+\hat{\sigma}^2
+\ = \
+\frac{1}{N} \sum_{n=1}^N \left( y_n - x_n \hat{\beta} \right)^2
+\ = \
+\frac{1}{N} (y - x \hat{\beta})^{\top} (y - x\hat{\beta}).
+\]
+
+\subsubsection{Minimizing Squared Error in Stan}
+
+The squared error approach to linear regression can be directly coded
+in Stan with the following model.
+%
+\begin{stancode}
+data {
+  int<lower=0> N;
+  int<lower=1> K;
+  vector[N] y;
+  matrix[N,K] x;
+}
+parameters {
+  vector[K] beta;
+}
+transformed parameters {
+  real<lower=0> squared_error;
+  squared_error <- dot_self(y - x * beta);
+}
+model {
+  increment_log_prob(-squared_error);
+}  
+generated quantities {
+  real<lower=0> sigma_squared;
+  sigma_squared <- squared_error / N;
+}
+\end{stancode}
+%
+Running Stan's optimizer on this model produces the MLE for the linear
+regression by directly minimizing the sum of squared errors and using
+that to define the noise scale as a generated quantity.
+
+By replacing \code{N} with \code{N-1} in the denominator of the
+definition of \code{sigma\_squared}, the more commonly supplied
+unbiased estimate of $\sigma^2$ can be calculated; see
+\refsection{estimation-bias} for a definition of estimation bias and a
+discussion of estimating variance.
+
+
+
+\section{Penalized Maximum Likelihood Estimation}
+
+There is nothing special about a likelihood function as far as the
+ability to perform optimization is concerned.  It is common among
+non-Bayesian statisticians to add so-called ``penalty'' functions
+to log likelihoods and optimize the new function.  The penalized
+maximum likelihood estimator for a log likelihood function 
+$\log p(y|\theta)$ and penalty function $r(\theta)$ is defined to be
+\[
+\hat{\theta} = \mbox{argmax}_{\theta} \log p(y|\theta) - r(\theta).
+\]
+The penalty function $r(\theta)$ is negated in the maximization so
+that the estimate $\hat{\theta}$ balances maximizing the log
+likelihood and minimizing the penalty.  Penalization is sometimes
+called ``regularization.''
+
+
+\subsection{Examples}\label{penalized-mle-examples}
+
+\subsubsection{Ridge Regression}
+
+Ridge regression \citep{HoerlKennard:1970} is based on penalizing the
+Euclidean length of the coefficient vector $\beta$. The ridge penalty
+function is
+%
+\[
+r(\beta) 
+\ = \
+\lambda \, \sum_{k=1}^K \beta_k^2
+\ = \ 
+\lambda \, \beta^{\top} \beta,
+\]
+%
+where $\lambda$ is a constant tuning parameter that determines the
+magnitude of the penalty. 
+
+
+Therefore, the penalized maximum likelihood estimate for ridge
+regression is just
+%
+\[
+(\hat{\beta},\hat{\sigma}) 
+\ = \
+\mbox{argmax}_{\beta,\sigma} \,
+ \sum_{n=1}^N \log \distro{Normal}(y_n|x_n \beta, \sigma) - \lambda
+ \sum_{k=1}^K \beta_k^2
+\]
+%
+The ridge penalty is sometimes called L2 regularization or shrinkage,
+because of its relation to the L2 norm.
+
+Like the basic MLE for linear regression, the ridge regression
+estimate for the coefficients $\beta$ can also be formulated in terms
+of least squares,
+%
+\[
+\hat{\beta}
+\ = \ 
+\mbox{argmin}_{\beta} \, \sum_{n=1}^N (y_n - x_n \beta)^2 + \sum_{k=1}^K \beta_k^2
+\ = \ 
+\mbox{argmin}_{\beta} \, (y - x\beta)^{\top} (y - x\beta) +
+\lambda \beta^{\top} \beta.
+\]
+
+The effect of adding the ridge penalty function is that the ridge
+regression estimate for $\beta$ is a vector of shorter length, or in
+other words, $\hat{\beta}$ is shrunk.  The ridge estimate does not
+necessarily have a smaller absolute $\beta_k$ for each $k$, nor does
+the coefficient vector necessarily point in the same direction as the
+maximum likelihood estimate.
+
+In Stan, adding the ridge penalty involves adding its magnitude as a
+data variable and the penalty itself to the model block,
+%
+\begin{stancode}
+data {
+  // ...
+  real<lower=0> lambda;
+}
+// ...
+model {
+  // ...
+  increment_log_prob(- lambda * dot_self(beta));
+}
+\end{stancode}
+%
+The noise term calculation remains the same.
+
+\subsubsection{The Lasso}
+
+The lasso \citep{Tibshirani:1996} is an alternative to ridge
+regression that applies a penalty based on the sum of the absolute
+coefficients, rather than the sum of their squares,
+\[
+r(\beta) = \lambda \sum_{k=1}^K | \beta_k |.
+\]
+The lasso is also called L1 shrinkage due to its relation to the L1
+norm, which is also known as taxicab distance or Manattan distance.
+
+Because the derivative of the penalty does not depend on the value of
+the $\beta_k$,
+\[
+\frac{d}{d\beta_k} \lambda \sum_{k=1}^K | \beta_k | =
+\mbox{signum}(\beta_k),
+\]
+it has the effect of shrinking parameters all the way to 0 in maximum
+likelihood estimates.  Thus it can be used for variable selection as
+well as just shrinkage.
+
+But there is one drawback.  Stan's optimizers are not set up to deal
+with the absolute value in the formula, so they are unlikely to drive
+estimates all the way to 0.  
+
+The lasso can be implemented in Stan just as easily as ridge
+regression, with the magnitude declared as data and the penalty added
+to the model block,
+%
+\begin{stancode}
+data {
+  // ...
+  real<lower=0> lambda;
+}
+// ...
+model {
+  // ...
+  for (k in 1:K)
+    increment_log_prob(- lambda * abs(beta[k]));
+}
+\end{stancode}
+
+\subsubsection{The Elastic Net}
+
+The naive elastic net \citep{ZouHastie:2005} involves a weighted
+average of ridge and lasso penalties, with a penalty function
+\[
+r(\beta) = \lambda_1 \sum_{k=1}^K \beta_k^2 + \lambda_2 \sum_{k=1}^K
+|\beta_k|.
+\]
+The naive elastic net combines properties of both ridge regression and
+the lasso, providing both identification and variable selection.
+
+The naive elastic net can be implemented directly in Stan by combining
+implementations of ridge regression and the lasso, as
+%
+\begin{stancode}
+data {
+  real<lower=0> lambda1;
+  real<lower=0> lambda2;
+  // ...
+}
+// ...
+model {
+  // ...
+  increment_log_prob(lambda2 * dot_self(beta));
+  for (k in 1:K)
+    increment_log_prob(lambda1 * abs(beta[k]));
+}
+\end{stancode}
+%
+
+The elastic net \citep{ZouHastie:2005} involves adjusting the final estimate for
+$\beta$ based on the fit $\hat{\beta}$ produced by the naive elastic
+net.  The elastic net estimate is
+\[
+\hat{\beta} = (1 + \lambda_2) \beta^*
+\]
+where $\beta^{*}$ is the naive elastic net estimate.
+
+To implement the elastic net in Stan, the data, parameter, and model
+blocks are the same as for the naive elastic net.  In addition, the
+elastic net estimate is calculated in the generated quantities block.
+%
+\begin{stancode}
+generated quantities {
+  vector[K] beta_elastic_net;
+  // ...
+  beta_elastic_net <- (1 + lambda2) * beta;
+}
+\end{stancode}
+%
+The error scale also needs to be calculated in the generated
+quantities block based on the elastic net coefficients
+\code{beta\_elastic\_net}.
+
+
+\subsubsection{Other Penalized Regressions}
+
+It is also common to use penalty functions that bias the coefficient
+estimates toward values other than 0, as in the estimators of
+\cite{JamesStein:1961}.  Penalty functions can also be used to bias
+estimates toward population means; see
+\citep{EfronMorris:1975,Efron:2012}.  This latter approach is similar
+to the hierarchical models commonly employed in Bayesian statistics.
+
+
+\section{Posterior Mode Estimation}
+
+There are three common approaches to Bayesian point estimation based
+on the posterior $p(\theta|y)$ of parameters $\theta$ given observed
+data $y$: the mode (maximum), the mean, and the median.  This section
+covers estimates based on the parameters $\theta$ that maximize the
+posterior density, and the next sections continue with discussions of
+the mean and median.
+
+An estimate based on a model's posterior mode can be defined by
+%
+\[
+\hat{\theta} = \mbox{argmax}_{\theta} \, p(\theta|y).
+\]
+%
+When it exists, $\hat{\theta}$ maximizes the posterior density of the
+parameters given the data.  The posterior mode is sometimes called the
+``maximum a posteriori'' (MAP) estimate.
+
+As discussed in \refchapter{problematic-posteriors} and
+\refsection{mle}, a unique posterior mode might not
+exist---there may be no value that maximizes the posterior mode or
+there may be more than one.  In these cases, the posterior mode
+estimate is undefined.  Stan's optimizer, like most optimizers, will
+have problems in these situations.  It may also return a locally
+maximal value that is not the global maximum.
+
+In cases where there is a posterior mode, it will correspond to a
+penalized maximum likelihood estimate with a penalty function equal to
+the negation of the log prior.  This is because Bayes's rule,
+\[
+p(\theta|y) = \frac{p(y|\theta) \, p(\theta)}{p(y)},
+\]
+ensures that
+%
+\begin{eqnarray*}
+\mbox{argmax}_{\theta} \ p(\theta|y)
+& = &
+\mbox{argmax}_{\theta} \ \frac{p(y|\theta) \, p(\theta)}{p(y)}
+\\[6pt]
+& = &
+\mbox{argmax}_{\theta} \ p(y|\theta) \, p(\theta),
+\end{eqnarray*}
+%
+and the positiveness of densities and the strict monotonicity of log
+ensure that
+\[
+\mbox{argmax}_{\theta} \ p(y|\theta) \, p(\theta)
+\ = \
+\mbox{argmax}_{\theta} \ \log p(y|\theta) + \log p(\theta).
+\]
+%
+
+In the case where the prior (proper or improper) is uniform, the
+posterior mode is equivalent to the maximum likelihood estimate.
+
+For most commonly used penalty functions, there are probabilistic
+equivalents.  For example, the ridge penalty function corresponds to a
+normal prior on coefficients and the lasso to a Laplace prior.  The
+reverse is always true---a negative prior can always be treated as a
+penalty function.
+
+
+
+\section{Posterior Mean Estimation}
+
+A standard Bayesian approach to point estimation is to use the
+posterior mean (assuming it exists), defined by
+%
+\[
+\hat{\theta} = \int \theta \, p(\theta|y) \, d\theta.
+\]
+%
+The posterior mean is often called {\it the}\ Bayesian estimator,
+because it's the estimator that minimizes the expected square error of
+the estimate.
+
+An estimate of the posterior mean for each parameter is returned by
+Stan's interfaces;  see the RStan, CmdStan, and PyStan user's guides
+for details on the interfaces and data formats.  
+
+Posterior means exist in many situations where posterior
+modes do not exist.  For example, in the $\distro{Beta}(0.1, 0.1)$
+case, there is no posterior mode, but posterior mean is well defined
+with value 0.5.  
+
+A situation where posterior means fail to exist but posterior modes do
+exist is with a posterior with a Cauchy distribution
+$\distro{Cauchy}(\mu,\tau)$.  The posterior mode is $\mu$, but the
+integral expressing the posterior mean diverges.  Such diffuse priors
+rarely arise in practical modeling applications; even with a Cauchy
+Cauchy prior for some parameters, data will provide enough constraints
+that the posterior is better behaved and means exist.
+
+Sometimes when posterior means exist, they are not meaningful, as in
+the case of a multimodal posterior arising from a mixture model or in
+the case of a uniform distribution on a closed interval.  
+
+
+\section{Posterior Median Estimation}
+
+The posterior median (i.e., 50th percentile or 0.5 quantile) is
+another popular point estimate reported for Bayesian models.  The
+posterior median minimizes the expected absolute error of estimates.
+These estimates are returned in the various Stan interfaces;  see the
+RStan, PyStan and CmdStan user's guides for more information on
+format. 
+
+Although posterior medians may fail to be meaningful, they often exist
+even where posterior means do not, as in the Cauchy distribution.
+
+
+
+\section{Estimation Error, Bias, and Variance}\label{estimation-bias.section}
+
+An estimate $\hat{\theta}$ depends on the particular data $y$ and
+either the log likelihood function, $\log p(y|\theta)$, penalized log
+likelihood function $\log p(y|\theta) - r(\theta)$, or log probability
+function $\log p(y,\theta) = \log p(y,\theta) + \log p(\theta)$.  In
+this section, the notation $\hat{\theta}$ is overloaded to indicate
+the estimator, which is an implicit function of the data and
+(penalized) likelihood or probability function.
+
+\subsection{Estimation Error}
+
+For a particular observed data set $y$ generated according to true
+parameters $\theta$, the estimation error is the difference between
+the estimated value and true value of the parameter,
+\[
+\mbox{err}(\hat{\theta}) = \hat{\theta} - \theta.
+\]
+%
+
+\subsection{Estimation Bias}
+
+For a particular true parameter value $\theta$ and a likelihood
+function $p(y|\theta)$, the expected estimation error averaged over
+possible data sets $y$ according to their density under the likelihood
+is
+%
+\[
+\mathbb{E}_{p(y|\theta)}[\hat{\theta}] 
+\ = \
+\int \left( \mbox{argmax}_{\theta'} p(y|\theta') \right) p(y|\theta) dy.
+\]
+
+An estimator's bias is the expected estimation error,
+%
+\[
+\mathbb{E}_{p(y|\theta)}[\hat{\theta} - \theta]
+\ = \
+\mathbb{E}_{p(y|\theta)}[\hat{\theta}] - \theta
+\]
+%
+The bias is a multivariate quantity with the same dimensions as
+$\theta$.  An estimator is unbiased if its expected estimation error
+is zero and biased otherwise.
+
+\subsubsection{Example: Estimating a Normal Distribution}
+
+Suppose a data set of observations $y_n$ for $n \in 1{:}N$ drawn from
+a normal distribution.  This presupposes a model $y_n \sim
+\distro{Normal}(\mu,\sigma)$, where both $\mu$ and $\sigma > 0$ are
+parameters.  The log likelihood is just
+\[
+\log p(y|\mu,\sigma) = \sum_{n=1}^N \log
+\distro{Normal}(y_n|\mu,\sigma).
+\]
+The maximum likelihood estimator for $\mu$ is just the sample mean,
+i.e., the average of the samples,
+\[
+\hat{\mu} = \frac{1}{N} \sum_{n=1}^N y_n.
+\]
+The maximum likelihood estimate for the mean is unbiased.
+
+The maximum likelihood estimator for the variance $\sigma^2$ is the
+average of the squared difference from the mean,
+\[
+\hat{\sigma}^2 = \frac{1}{N} \sum_{n=1}^N (y_n - \hat{\mu})^2.
+\]
+The maximum likelihood for the variance is biased on the low side,
+i.e., 
+%
+\[
+\mathbb{E}_{p(y|\mu,\sigma)}[\hat{\sigma}^2] < \sigma.
+\]
+%
+The reason for this bias is that the maximum likelihood estimate is
+based on the difference from the estimated mean $\hat{\mu}$.  Plugging
+in the actual mean can lead to larger sum of squared differences;  if
+$\mu \neq \hat{\mu}$, then
+\[
+\frac{1}{N} \sum_{n=1}^N (y_n - \mu)^2
+> 
+\frac{1}{N} \sum_{n=1}^N (y_n - \hat{\mu})^2.
+\]
+
+An alternative estimate for the variance is the sample variance, which
+is defined by
+\[
+\hat{\mu} = \frac{1}{N-1} \sum_{n=1}^N (y_n - \hat{\mu})^2.
+\]
+This value is larger than the maximum likelihood estimate by a factor
+of $N/(N-1)$.
+
+
+\subsection{Estimation Variance}
+
+The variance of component $k$ of an estimator $\hat{\theta}$ is
+computed like any other variance, as the expected squared difference
+from its expectation, 
+%
+\[
+\mbox{var}_{p(y|\theta})[\hat{\theta}_k]
+\ = \
+\mathbb{E}_{p(y|\theta})[\, (\hat{\theta}_k -
+\mathbb{E}_{p(y|\theta)}[\hat{\theta}_k])^2 \,].
+\]
+%
+The full $K \times K$ covariance matrix for the estimator is thus
+defined, as usual, by
+%
+\[
+\mbox{covar}_{p(y|\theta)}[\hat{\theta}]
+\ = \
+\mathbb{E}_{p(y|\theta})[\, (\hat{\theta} - \mathbb{E}[\hat{\theta}]) \,
+                         (\hat{\theta} -
+                         \mathbb{E}[\hat{\theta}])^{\top} \, ].
+\]
+
+Continuing the example of estimating the mean and variance of a normal
+distribution based on sample data, the maximum likelihood estimator
+(i.e., the sample mean) is the unbiased estimator for the mean $\mu$
+with the lowest variance; the Gauss-Markov theorem establishes this
+result in some generality for least-squares estimation, or
+equivalently, maximum likelihood estimation under an assumption of
+normal noise; see \citep[Section~3.2.2]{HastieTibshiraniFriedman:2009}.
+
+
+
+
+
+
+
+
+
+
+
 \chapter{Bayesian Data Analysis}\label{bayesian.chapter}
 
 \noindent
-\cite{GelmanCarlinSternRubin:2003} provide the following
+\cite{GelmanEtAl:2013} provide the following
 characterization of Bayesian data analysis.
 %
 \begin{quote}
@@ -36,7 +626,7 @@ inference, as described below.
 
 \section{Bayesian Modeling}
 
-\citep{GelmanCarlinSternRubin:2003} break applied Bayesian modeling
+\citep{GelmanEtAl:2013} break applied Bayesian modeling
 into the following three steps.
 %
 \begin{enumerate}
@@ -171,7 +761,7 @@ After the parameters are fit to data, they can be used to simulate a
 new data set by running the model inferences in the forward
 direction.  These replicated data sets can then be compared to the
 original data either visually or statistically to assess model fit 
-\citep[Chapter 6]{GelmanCarlinSternRubin:2003}.  
+\citep[Chapter 6]{GelmanEtAl:2013}.  
 
 In Stan, posterior simulations can be generated in two ways.  The
 first approach is to treat the predicted variables as parameters and
@@ -250,8 +840,8 @@ $\theta = \theta^{(1)}, \theta^{(2)},\ldots, \theta^{(N)}$, then
 \[
 p(\theta) = p(\theta^{(1)}) \prod_{n=2}^N p(\theta^{(n)}|\theta^{(n-1)}).
 \]
-\Stan generates a next state in a manner described in
-\refsection{intro-samplers}. 
+Stan uses Hamiltonian Monte Carlo to generate a next state in a manner
+described in \refchapter{hmc}.
 
 The Markov chains \Stan and other \MCMC samplers generate are ergodic
 in the sense required by the Markov chain central limit theorem,
@@ -420,6 +1010,108 @@ near unity.  In this case, splitting each chain into two parts leads
 to $\hat{R}$ values substantially greater than 1 because the first
 half of each chain has not mixed with the second half.  
 
+
+\subsection{Converence is Global}
+
+A question that often arises is whether it is acceptable to monitor
+convergence of only a subset of the parameters or generated
+quantities.  The short answer is ``no,'' but this is elaborated
+further in this section.
+
+For example, consider the value \code{lp\_\_}, which is the log
+posterior density (up to a constant) It is a mistake to declare
+convergence in any practical sense if \code{lp\_\_} has not converged,
+because different chains are really in different parts of the space.
+Yet measuring convergence for \code{lp\_\_} is particularly tricky, as
+noted below.
+
+\subsubsection{Asymptotics and transience vs.\ equilibrium}
+
+Markov chain convergence is a global property in the sense that it
+does not depend on the choice of function of the parameters that is
+monitored.  There is no hard cutoff between pre-convergence
+``transience'' and post-convergence ``equilibrium.''  What happens is
+that as the number of states in the chain approaches infinity, the
+distribution of possible states in the chain approaches the target
+distribution and in that limit the expected value of the Monte Carlo
+estimator of any integrable function converges to the true
+expectation. There is nothing like warmup here, because in the limit,
+the effects of initial state are completely washed out.
+
+\subsubsection{Multivariate convergence of functions}
+
+The $\hat{R}$ statistic considers the composition of a Markov chain
+and a function, and if the Markov chain has converged then each Markov
+chain and function composition will have converged. Multivariate
+functions converge when all of their margins have converged by the
+Cramer-Wold theorem.  
+
+The transformation from unconstrained space to constrained space is
+just another function, so does not effect convergence.
+
+Different functions may have different autocorrelations, but if the
+Markov chain has equilibrated then all Markov chain plus function
+compositions should be consistent with convergence. Formally, any
+function that appears inconsistent is of concern and although it would
+be unreasonable to test every function, \code{lp\_\_} and other
+measured quantities should at least be consistent.
+
+The obvious difference in \code{lp\_\_} is that it tends to vary
+quickly with position and is consequently susceptible to outliers. 
+
+\subsubsection{Finite numbers of states}
+
+The question is what happens for finite numbers of states? If we can
+prove a strong geometric ergodicity property (which depends on the
+sampler and the target distribution), then one can show that there
+exists a finite time after which the chain forgets its initial state
+with a large probability. This is both the autocorrelation time and
+the warmup time.  But even if you can show it exists and is finite
+(which is nigh impossible) you can't compute an actual value
+analytically.
+
+So what we do in practice is hope that the finite number of draws is
+large enough for the expectations to be reasonably accurate. Removing
+warmup iterations improves the accuracy of the expectations but there
+is no guarantee that removing any finite number of samples will be
+enough.
+
+\subsubsection{Why inconsistent $\hat{R}$?}
+
+There are two things to worry about here.
+
+Firstly, as noted above, for any finite number of draws, there will
+always be some residual effect of the initial state, which typically
+manifests as some small (or large if the autocorrelation time is huge)
+probability of having a large outlier. Functions robust to such
+outliers (say, quantiles) will appear more stable and have better
+$\hat{R}$. Functions vulnerable to such outliers may show fragility.
+
+Secondly, use of the $\hat{R}$ statistic makes very strong
+assumptions. In particular, it assumes that the functions being
+considered are Gaussian or it only uses the first two moments and
+assumes some kind of independence.  The point is that strong
+assumptions are made that do not always hold. In particular, the
+distribution for the log posterior density (\code{lp\_\_}) almost
+never looks Gaussian, instead it features long tails that can lead to
+large $\hat{R}$ even in the large $N$ limit.  Tweaks to $\hat{R}$,
+such as using quantiles in place of raw values, have the flavor of
+making the samples of interest more Gaussian and hence the $\hat{R}$
+statistic more accurate.
+
+\subsubsection{Final words on convergence monitoring}
+
+``Convergence'' is a global property and holds for all integrable
+functions at once, but employing the $\hat{R}$ statistic requires
+additional assumptions and thus may not work for all functions equally
+well.
+
+Note that if you just compare the expectations between chains then we
+can rely on the Markov chain asymptotics for Gaussian distributions
+and can apply the standard tests.
+
+
+
 \section{Effective Sample Size}\label{effective-sample-size.section}
 
 The second technical difficulty posed by \MCMC methods is that the
@@ -494,7 +1186,7 @@ V_t =
 \
 \left(
 \frac{1}{N_m}
-\sum_{n=t+1}^{N^m}
+\sum_{n=t+1}^{N_m}
 \left(
 \theta_m^{(n)} - \theta_m^{(n-t)}
 \right)^2
@@ -553,80 +1245,9 @@ On the other hand, if memory and data storage are no object, saving all
 ten thousand samples will have a higher effective sample size than
 thinning to one thousand samples.
 
-\section{Stan's Hamiltonian Monte Carlo Samplers}\label{intro-samplers.section}
-
-For continuous variables, \Stan uses Hamiltonian Monte Carlo (\HMC)
-sampling. \HMC is a Markov chain Monte Carlo (\MCMC) method based on
-simulating the Hamiltonian dynamics of a fictional physical system in
-which the parameter vector $\theta$ represents the position of a
-particle in $K$-dimensional space and potential energy is defined to
-be the negative (unnormalized) log probability.  Each sample in the
-Markov chain is generated by starting at the last sample, applying a
-random momentum to determine initial kinetic energy, then simulating
-the path of the particle in the field.  Standard \HMC runs the
-simulation for a fixed number of discrete steps of a fixed step size,
-whereas \NUTS adjusts the number of steps on each iteration and allows
-varying step sizes per parameter.
 
 
-
-\subsection{Step-Size Adaptation during Warmup}
-
-In addition to standard \HMC, \Stan implements an adaptive version of
-\HMC, the No-U-Turn Sampler (\NUTS).  By default, \NUTS automatically
-tunes a step sizes during warmup.  A global step size is optimized for
-a target Metropolis-Hastings reject rate using dual averaging; see
-\citep{Nesterov:2009} for details of dual averaging and
-\citep{Hoffman-Gelman:2011,Hoffman-Gelman:2013} 
-for details of its use in \Stan.  For
-information on run-time configuration of step-size adaptation, see
-\refsection{stan-command-line-options}.  Then step sizes per parameter
-are estimated during warmup.  
-
-\subsection{Number of Steps}
-
-During sampling, \NUTS adapts the number of leapfrog steps (i.e., the
-simulation time), using a geometric criterion that stops a trajectory
-when it begins to head back in the direction of the initial state.
-Once a trajectory is stopped, \NUTS uses slice sampling to select a
-state along the trajectory as the next proposal.
-
-Although \Stan only samples continuous variables, its language is
-expressive enough to allow most discrete variables to be marginalized
-out; see \refchapter{mixture-modeling} for examples.
-
-\subsection{Detailed Balance}
-
-\HMC uses a Metropolis rejection step to ensure detailed balance of
-the resulting Markovian system; for details, see \citep{Neal:2011}.
-\NUTS uses a form of slice sampling which guarantees detailed balance;
-for details, see \citep{Hoffman-Gelman:2011,Hoffman-Gelman:2013}.%
-%
-\footnote{A transition density $\phi(\omega'|\omega)$ and density
-  $\pi(\omega)$ over state space $\Omega$ satisfy detailed balance if
-  and only if for all $\omega, \omega' \in \Omega$,
-\[
-\pi(\omega) \, \phi(\omega'|\omega)
-=
-\pi(\omega') \, \phi(\omega | \omega').
-\]
-Detailed balance ensures stationarity of the transition density $\phi$
-with respect to the equilibrium density $\pi$, so that
-\[
-\pi(\omega') = \int_{\Omega} \pi(\omega) \, \phi(\omega'|\omega) \, d\omega.
-\]
-} 
-%
-This adjustment treats the momentum term of the Hamiltonian as an
-auxiliary variable, and the only reason for rejecting a sample will be
-discretization error in computing the Hamiltonian.  In practice, the
-possibility of rejecting a proposed update means that one or more
-duplicate samples may appear in the chain; the resulting loss in
-inferential power is accounted for with effective sample size
-calculations as described in \refsection{effective-sample-size}.
-
-
-\chapter{Transformations of Variables}\label{variable-transforms.chapter}
+\chapter{Transformations of Constrained Variables}\label{variable-transforms.chapter}
 
 \noindent
 To avoid having to deal with constraints while simulating the
@@ -736,7 +1357,7 @@ values.  Diagonal matrices, a simple form of triangular matrix, arise
 if each transformed variable only depends on a single untransformed
 variable.
 
-\section{Lower Bounded Scalar}
+\section{Lower Bounded Scalar}\label{lower-bound-transform.section}
 
 \Stan uses a logarithmic transform for lower and upper bounds.  
 
@@ -816,7 +1437,7 @@ p_Y(y)
 \]
 
 
-\section{Lower and Upper Bounded Scalar}
+\section{Lower and Upper Bounded Scalar}\label{logit-transform-jacobian.section}
 
 For lower and upper-bounded variables, \Stan uses a scaled and
 translated log-odds transform.
@@ -987,7 +1608,7 @@ p_Y(y)
 \]
 
 
-\section{Unit Simplex}
+\section{Unit Simplex}\label{simplex-transform.section}
 
 Variables constrained to the unit simplex show up in multivariate
 discrete models as both parameters (categorical and multinomial) and
@@ -1228,7 +1849,7 @@ absolute value of the determinant is
 \]
 
 
-\section{Correlation Matrices}
+\section{Correlation Matrices}\label{correlation-matrix-transform.section}
 
 A $K \times K$ correlation matrix $x$ must be is a symmetric, so that
 %
@@ -1353,9 +1974,14 @@ as
 
 \subsection{Absolute Jacobian Determinant of the Correlation
   Matrix Inverse Transform}
-
-The only description so far is in the \Stan transform code.
-
+From the inverse of equation 11 in \cite{LewandowskiKurowickaJoe:2009},
+the absolute Jacobian determinant is
+%
+\[
+\sqrt{\prod_{i=1}^{K-1}\prod_{j=i+1}^K \left(1-z_{i,j}^2\right)^{K-i-1}} \
+\times \prod_{i=1}^{K-1}\prod_{j=i+1}^K 
+\frac{\partial \tanh z_{i,j}}{\partial y_{i,j}}
+\]
 \subsection{Correlation Matrix Transform}
 
 The correlation transform is defined by reversing the steps of the
@@ -1518,19 +2144,21 @@ z_{n,n} & \mbox{if } m > n.
 %
 The absolute Jacobian determinant of the second transform is thus
 \[
-2^{K} 
-\
-\prod_{m = 1}^{K} \ \prod_{n=1}^{m} z_{n,n}.
+2^{K} \ \prod_{m = 1}^{K} \ \prod_{n=1}^{m} z_{n,n}
+\ = \
+\prod_{n=1}^K \ \prod_{m=n}^K z_{n,n}
+\ = \ 
+2^{K} \ \prod_{k=1}^K z_{k,k}^{K - k + 1}.
 \]
 Finally, the full absolute Jacobian determinant of the inverse
 of the covariance matrix transform from the unconstrained lower-triangular 
 $y$ to a symmetric, positive definite matrix $x$ is the product of the
 Jacobian determinants of the exponentiation and product transforms,
 \[
-2^{K} 
-\
 \left( \prod_{k=1}^K z_{k,k} \right)
-\left( \prod_{m = 1}^{K} \ \prod_{n=1}^{m} z_{n,n} \right)
+\left( 
+2^{K} \ \prod_{k=1}^K z_{k,k}^{K - k + 1}
+\right) 
 \ = \
 2^K
 \, \prod_{k=1}^K z_{k,k}^{K-k+2}.
@@ -1546,9 +2174,20 @@ p_Y(y) = p_X(f^{-1}(y)) \ 2^K \ \prod_{k=1}^K z_{k,k}^{K-k+2}.
 
 \section{Cholesky Factors of Covariance Matrices}
 
-An $M \times N$ matrix is a Cholesky factor of a covariance matrix
-if it is lower triangular, the diagonal entries are positive, and $M
-\geq N$.  It requires $N + \binom{N}{2} + (M - N)N$ parameters.
+An $M \times M$ covariance matrix $\Sigma$ can be Cholesky factored to
+a lower triangular matrix $L$ such that $L\,L^{\top} = \Sigma$.  If
+$\Sigma$ is positive definite, then $L$ will be $M \times M$.  If
+$\Sigma$ is only positive semi-definite, then $L$ will be $M \times N$,
+with $N < M$.  
+
+A matrix is a Cholesky factor for a covariance matrix if and only if
+it is lower triangular, the diagonal entries are positive, and $M \geq
+N$.  A matrix satisfying these conditions ensures that $L \,
+L^{\top}$ is positive semi-definite if $M > N$ and positive definite
+if $M = N$.
+
+A Cholesky factor of a covariance matrix requires $N + \binom{N}{2} +
+(M - N)N$ unconstrained parameters.
 
 \subsection{Cholesky Factor of Covariance Matrix Transform}
 
@@ -1614,92 +2253,175 @@ matrices is transformed to the density $p_Y(y)$ over $N + \binom{N}{2}
 p_Y(y) = p_X(f^{-1}(y)) \prod_{N=1}^N x_{n,n}.
 \]
 
-% \chapter{Generated C++ Model Class}
+\section{Cholesky Factors of Correlation Matrices}
 
-% The \Cpp class generated by \code{stanc} for a model (see
-% \refsection{stanc}) may be used in contexts other than the \Stan
-% samplers.  Similarly, a model can be hand-coded in \Cpp and plugged
-% into \Stan's samplers.  This chapter provides a sketch of the code
-% generated for models and how to use it.
+A $K \times K$ correlation matrix $\Omega$ is positive definite and
+has a unit diagonal.  Because it is positive definite, it can be
+Cholesky factored to a $K \times K$ lower-triangular matrix $L$ with
+positive diagonal elements such that $\Omega = L\,L^{\top}$.  Because
+the corelation matrix has a unit diagonal,
+\[
+\Omega_{k,k} = L_k\,L_k^{\top} = 1, 
+\]
+each row vector $L_k$ of the Cholesky factor is of unit length.  The
+length and positivity constraint allow the diagonal elemens of $L$ to
+be calculated from the off-diagonal elements, so that a Cholesky
+factor for a $K \times K$ correlation matrix requires only
+$\binom{K}{2}$ unconstrained parameters.
 
-% \section{Log Probability and Gradient Base Class}
+\subsection{Cholesky Factor of Correlation Matrix Inverse Transform}
 
-% \Stan's samplers require models that extend the abstract base class
-% \code{stan::model::prob\_grad}.  The constructor for this class is as
-% follows.
-% %
-% \begin{verbatim}
-% prob_grad(size_t num_params_r);
-% \end{verbatim}
-% %
-% The argument specifies the number of real parameters in the model.
+It is easiest to start with the inverse transform from the
+$\binom{K}{2}$ unconstrained parameters $y$ to the $K \times K$
+lower-triangular Cholesky factor $x$.  The inverse transform is based
+on the hyperbolic tangent function, $\tanh$, which satisfies $\tanh(x)
+\in (-1,1)$.  Here it will function like an inverse logit with a sign
+to pick out the direction of an underlying canonical partial
+correlation (see \refsection{correlation-matrix-transform} for more
+information on the relation between canonical partial correlations and
+the Cholesky factors of correlation matrices).
 
-% From the sampler's perspective, the model is just a log probability
-% function and gradient, which are computed using the following method.
-% %
-% \begin{verbatim}
-% virtual double 
-% grad_log_prob(const vector<double>& params_r, 
-%               vector<double>& gradient) = 0;
-% \end{verbatim}
-% %
-% The first argument is the parameter vector at which the log
-% probability function will be evaluated.  The second argument is filled
-% with the gradient.  The return value is the value of the log
-% probability function.  It works best for \Stan's samplers if the
-% probability function has unconstrained support, so that all returned
-% values are finite.%
-% %
-% \footnote{\Stan's samplers will not gripe if given zero probabilities
-%   (i.e., negative infinity log probabilities), but the sampler may
-%   not sample well depending on the shape of the probability function.}
-% %
-% An implementation of this class can be plugged directly into \Stan's
-% samplers, standard \HMC and \NUTS.
+Suppose $y$ is a vector of $\binom{K}{2}$ unconstrained values.  Let
+$z$ be a lower-triangular matrix with zero diagonal and below
+diagonal entries filled by row.  For example, in the $3 \times 3$
+case,
+\[
+z =
+\left[
+\begin{array}{ccc}
+0 & 0 & 0
+\\
+\tanh y_1 & 0 & 0
+\\
+\tanh y_2 & \tanh y_3 & 0
+\end{array}
+\right] 
+\]
+%
+The matrix $z$, with entries in the range $(-1,1)$, is then
+transformed to the Cholesky factor $x$, by taking%
+%
+\footnote{For convenience, a summation with no terms, such as
+  $\sum_{j' < 1} x_{i,j'}$, is defined to be 0.  This implies
+  $x_{1,1} = 1$ and that $x_{i,1} = z_{i,1}$ for $i > 1$.}
+%
+\[
+x_{i,j}
+=
+\left\{
+\begin{array}{lll}
+0 & \mbox{ if } i < j & \mbox{ [above diagonal]}
+\\[12pt]
+\sqrt{1 - \sum_{j' < j} x_{i,j'}^2}
+  & \mbox{ if } i = j & \mbox{ [on diagonal]}
+\\[12pt]
+z_{i,j} \ \sqrt{1 - \sum_{j' < j} x_{i,j'}^2}
+  & \mbox{ if } i > j & \mbox{ [below diagonal]}
+\end{array}
+\right.
+\]
+%
+In the $3 \times 3$ case, this yields
+\[
+x = 
+\left[
+\begin{array}{ccc}
+1 & 0 & 0
+\\[6pt]
+z_{2,1} & \sqrt{1 - x_{2,1}^2} & 0
+\\[6pt]
+z_{3,1} & z_{3,2} \sqrt{1 - x_{3,1}^2} 
+        & \sqrt{1 - (x_{3,1}^2 + x_{3,2}^2)} 
+\end{array}
+\right],
+\]
+where the $z_{i,j} \in (-1,1)$ are the $\tanh$-transformed $y$.
 
-% \section{Algorithmic Differentiation Base Class}
+The approach is a signed stick-breaking process on the quadratic
+(Euclidean length) scale.  Starting from length 1 at $j=1$, each
+below-diagonal entry $x_{i,j}$ is determined by the (signed) fraction
+$z_{i,j}$ of the remaining length for the row that it consumes. The
+diagonal entries $x_{i,i}$ get any leftover length from earlier
+entries in their row.  The above-diagonal entries are zero.
 
-% \Stan provides an extension \code{stan::model::prob\_grad\_ad} of the
-% abstract base class \code{stan::model::prob\_grad} that implements the
-% \code{grad\_log\_prob} method using algorithmic differentiation.  It
-% has the same constructor arguments as the base class,
-% \begin{quote}
-% \begin{Verbatim}
-% prob_grad_ad(size_t num_params_r);
-% \end{Verbatim}
-% \end{quote}
+\subsection{Cholesky Factor of Correlation Matrix Transform}
 
-% The gradient implementation class a pure virtual method which
-% implements the log probability function in a way that allows it to be
-% automatically differentiated.  This method is just the log probability
-% function defined in terms of \Stan's algorithmic gradient variables,
-% \code{stan::agrad::var}.  
-% \begin{quote}
-% \begin{Verbatim}
-% virtual var
-% log_prob(const vector<var>& params_r);
-% \end{Verbatim}
-% \end{quote}
-% %
-% The simplest way to implement this method is to provide a templated
-% log probability function definition in the implementing class,
-% %
-% \begin{quote}
-% \begin{Verbatim}
-% template <typename T>
-% virtual T
-% log_prob(const vector<T>& params_r);
-% \end{Verbatim}
-% \end{quote}
-% %
+Suppose $x$ is a $K \times K$ Cholesky factor for some correlation
+matrix.  The first step of the transform reconstructs the intermediate
+values $z$ from $x$, 
+\[
+z_{i,j} = \frac{x_{i,j}}{\sqrt{1 - \sum_{j' < j}x_{i,j'}^2}}.
+\]
+%
+The mapping from the resulting $z$ to $y$ inverts
+$\tanh$, 
+\[
+y 
+\ = \
+\tanh^{-1} z
+\ = \
+\frac{1}{2} \left( \log (1 + z) - \log (1 - z) \right).
+\]
+%
 
-% The \code{prob\_grad\_ad} class computes gradients using accurate and
-% efficient reverse-mode algorithmic differentiaton.  The cost of
-% computing the gradient is a small multiple of the cost of computing
-% the log probability.  The cost inovlves a bounded amount of extra
-% bookkeeping for each subexpression involved in computing the log
-% probability.  Unlike in the calculation of finite differences, the
-% extra bookkeeping is not dependent on the dimensionality of the
-% parameter vector.
+
+\subsection{Absolute Jacobian Determinant of Inverse Transform}
+
+The Jacobian of the full transform is the product of the Jacobians of
+its component transforms.
+
+First, for the inverse transform $z = \tanh y$, the derivative is
+%
+\[
+\frac{d}{dy} \tanh y = \frac{1}{(\cosh y)^2}.
+\]
+%
+
+Second, for the inverse transform of $z$ to $x$, the resulting
+Jacobian matrix $J$ is of dimension $\binom{K}{2} \times
+\binom{K}{2}$, with indexes $(i,j)$ for $(i > j)$.  The Jacobian
+matrix is lower triangular, so that its determinant is the product of
+its diagonal entries, of which there is one for each $(i,j)$ pair,
+%
+\[
+\left| \, \mbox{det} \, J \, \right|
+  \ = \ \mathlarger{\prod}_{i > j} \left| \frac{d}{dz_{i,j}} x_{i,j} \right|,
+\]
+%
+where
+%
+\[
+\frac{d}{dz_{i,j}} x_{i,j}
+= \sqrt{1 - \sum_{j' < j} x^2_{i,j'}}.
+\]
+%
+So the combined density for unconstrained $y$ is 
+\[
+p_Y(y) 
+= p_X(f^{-1}(y)) 
+  \ \
+  \mathlarger{\prod}_{n < \binom{K}{2}} \frac{1}{(\cosh y)^2}
+  \ \
+  \mathlarger{\prod}_{i > j} \left( 1 - \sum_{j' < j} x_{i,j'}^2
+  \right)^{1/2},
+\]
+%
+where $x = f^{-1}(y)$ is used for notational convenience.  The log
+Jacobian determinant of the complete inverse transform $x = f^{-1}(y)$
+is given by
+\[
+\log \left| \, \det J \, \right|
+= 
+-2 \sum_{n \leq \binom{K}{2}}
+\log \cosh y
+\
++
+\
+\frac{1}{2} \
+\sum_{i > j}
+\log \left( 1 - \sum_{j' < j} x_{i,j'}^2 \right)
+.
+\]
+
 
 

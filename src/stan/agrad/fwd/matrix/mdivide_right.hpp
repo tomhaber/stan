@@ -1,15 +1,21 @@
-#ifndef __STAN__AGRAD__FWD__MATRIX__COLUMNS_MDIVIDE_RIGHT_HPP__
-#define __STAN__AGRAD__FWD__MATRIX__COLUMNS_MDIVIDE_RIGHT_HPP__
+#ifndef STAN__AGRAD__FWD__MATRIX__COLUMNS_MDIVIDE_RIGHT_HPP
+#define STAN__AGRAD__FWD__MATRIX__COLUMNS_MDIVIDE_RIGHT_HPP
 
 #include <vector>
 #include <stan/math/matrix/Eigen.hpp>
 #include <stan/math/matrix/typedefs.hpp>
-#include <stan/math/matrix/validate_multiplicable.hpp>
-#include <stan/math/matrix/validate_square.hpp>
+#include <stan/math/matrix/mdivide_right.hpp>
+#include <stan/error_handling/matrix/check_multiplicable.hpp>
+#include <stan/error_handling/matrix/check_square.hpp>
 #include <stan/agrad/fwd/fvar.hpp>
 #include <stan/agrad/fwd/matrix/typedefs.hpp>
 #include <stan/agrad/fwd/matrix/inverse.hpp>
 #include <stan/agrad/fwd/matrix/multiply.hpp>
+#include <stan/math/matrix/multiply.hpp>
+#include <stan/agrad/fwd/matrix/to_fvar.hpp>
+#include <stan/math/matrix/inverse.hpp>
+#include <stan/agrad/fwd/matrix/inverse.hpp>
+#include <stan/math/matrix/mdivide_right.hpp>
 
 namespace stan {
   namespace agrad {
@@ -22,8 +28,10 @@ namespace stan {
       
       using stan::math::multiply;      
       using stan::math::mdivide_right;
-      stan::math::validate_square(b,"mdivide_right");
-      stan::math::validate_multiplicable(A,b,"mdivide_right");
+      stan::error_handling::check_square("mdivide_right", "b", b);
+      stan::error_handling::check_multiplicable("mdivide_right",
+                                                "A", A,
+                                                "b", b);
 
       Eigen::Matrix<T,R1,C2> A_mult_inv_b(A.rows(),b.cols());
       Eigen::Matrix<T,R1,C2> deriv_A_mult_inv_b(A.rows(),b.cols());
@@ -65,8 +73,10 @@ namespace stan {
       
       using stan::math::multiply;      
       using stan::math::mdivide_right;
-      stan::math::validate_square(b,"mdivide_right");
-      stan::math::validate_multiplicable(A,b,"mdivide_right");
+      stan::error_handling::check_square("mdivide_right", "b", b);
+      stan::error_handling::check_multiplicable("mdivide_right",
+                                                "A", A,
+                                                "b", b);
 
       Eigen::Matrix<T,R2,C2> deriv_b_mult_inv_b(b.rows(),b.cols());
       Eigen::Matrix<T,R1,C1> val_A(A.rows(),A.cols()); 
@@ -91,9 +101,10 @@ namespace stan {
       
       using stan::math::multiply;      
       using stan::math::mdivide_right;
-      stan::math::validate_square(b,"mdivide_right");
-      stan::math::validate_multiplicable(A,b,"mdivide_right");
-
+      stan::error_handling::check_square("mdivide_right", "b", b);
+      stan::error_handling::check_multiplicable("mdivide_right",
+                                                "A", A,
+                                                "b", b);
       Eigen::Matrix<T,R1,C2> 
         A_mult_inv_b(A.rows(),b.cols());
       Eigen::Matrix<T,R2,C2> deriv_b_mult_inv_b(b.rows(),b.cols());

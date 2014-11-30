@@ -1,20 +1,17 @@
-#ifndef __STAN__MEMORY__STACK_ALLOC_HPP__
-#define __STAN__MEMORY__STACK_ALLOC_HPP__
+#ifndef STAN__MEMORY__STACK_ALLOC_HPP
+#define STAN__MEMORY__STACK_ALLOC_HPP
 
 #include <cstdlib>
 #include <cstddef>
 #include <sstream>
 #include <stdexcept>
-#include <stdint.h> // FIXME: replace with cstddef?
-#include <vector>
-
-#ifdef __GNUC__
-#define likely(x) (__builtin_expect((x),1))
-#define unlikely(x) (__builtin_expect((x),0))
+#if defined(_MSC_VER)
+    #include <msinttypes.h>  // Microsoft Visual Studio lacks compliant stdint.h
 #else
-#define likely(x) (x)
-#define unlikely(x) (x)
+    #include <stdint.h> // FIXME: replace with cstddef?
 #endif
+#include <vector>
+#include <stan/meta/likely.hpp>
 
 namespace stan { 
 
@@ -82,7 +79,13 @@ namespace stan {
       std::vector<size_t> sizes_; // could store initial & shift for others
       size_t cur_block_;          // index into blocks_ for next alloc
       char* cur_block_end_;       // ptr to cur_block_ptr_ + sizes_[cur_block_]
-      char* next_loc_;            // ptr to next available spot in cur block
+      char* next_loc_;            // ptr to next available spot in cur
+                                  // block
+      // next three for keeping track of nested allocations on top of stack:
+      std::vector<size_t> nested_cur_blocks_;
+      std::vector<char*> nested_next_locs_;
+      std::vector<char*> nested_cur_block_ends_;
+      
 
       /**
        * Moves us to the next block of memory, allocating that block
@@ -133,7 +136,6 @@ namespace stan {
         cur_block_(0),
         cur_block_end_(blocks_[0] + initial_nbytes),
         next_loc_(blocks_[0]) {
-
         if (!blocks_[0])
           throw std::bad_alloc();  // no msg allowed in bad_alloc ctor
       }
@@ -184,6 +186,33 @@ namespace stan {
         next_loc_ = blocks_[0];
         cur_block_end_ = next_loc_ + sizes_[0];
       }
+
+      /**
+       * Store current positions before doing nested operation so can
+       * recover back to start.
+       */
+      inline void start_nested() {
+        nested_cur_blocks_.push_back(cur_block_);
+        nested_next_locs_.push_back(next_loc_);
+        nested_cur_block_ends_.push_back(cur_block_end_);
+      }
+
+      /**
+       * recover memory back to the last start_nested call.
+       */
+      inline void recover_nested() {
+        if (unlikely(nested_cur_blocks_.empty()))
+          recover_all();
+
+        cur_block_ = nested_cur_blocks_.back();
+        nested_cur_blocks_.pop_back();
+
+        next_loc_ = nested_next_locs_.back();
+        nested_next_locs_.pop_back();
+        
+        cur_block_end_ = nested_cur_block_ends_.back();
+        nested_cur_block_ends_.pop_back();
+      }
     
       /**
        * Free all memory used by the stack allocator other than the
@@ -199,7 +228,25 @@ namespace stan {
         blocks_.resize(1); 
         recover_all();
       }
-  
+
+      /**
+       * Return number of bytes allocated to this instance by the heap.
+       * This is not the same as the number of bytes allocated through
+       * calls to memalloc_.  The latter number is not calculatable
+       * because space is wasted at the end of blocks if the next
+       * alloc request doesn't fit.  (Perhaps we could trim down to 
+       * what is actually used?)
+       *
+       * @return number of bytes allocated to this instance
+       */
+      size_t bytes_allocated() {
+        size_t sum = 0;
+        for (size_t i = 0; i <= cur_block_; ++i) {
+          sum += sizes_[i];
+        }
+        return sum;
+      }
+
     };
 
   }

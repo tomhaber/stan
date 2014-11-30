@@ -1,5 +1,5 @@
-#ifndef __STAN__AGRAD__REV__MATRIX__VARIANCE_HPP__
-#define __STAN__AGRAD__REV__MATRIX__VARIANCE_HPP__
+#ifndef STAN__AGRAD__REV__MATRIX__VARIANCE_HPP
+#define STAN__AGRAD__REV__MATRIX__VARIANCE_HPP
 
 #include <cmath>
 #include <vector>
@@ -9,6 +9,7 @@
 #include <stan/agrad/rev/var.hpp>
 #include <stan/agrad/rev/vari.hpp>
 #include <stan/agrad/rev/matrix/stored_gradient_vari.hpp>
+#include <stan/error_handling/matrix/check_nonzero_size.hpp>
 
 namespace stan {
 
@@ -38,7 +39,7 @@ namespace stan {
         double sd = sqrt(variance);
         double* partials = (double*) memalloc_.alloc(size * sizeof(double));
         if (sum_of_squares < 1e-20) {
-          double grad_limit = 1 / std::sqrt(size);
+          double grad_limit = 1 / std::sqrt((double)size);
           for (size_t i = 0; i < size; ++i)
             partials[i] = grad_limit;
         } else {
@@ -60,7 +61,7 @@ namespace stan {
      * @return sample standard deviation of specified vector
      */
     var sd(const std::vector<var>& v) {
-      stan::math::validate_nonzero_size(v,"sd");
+      stan::error_handling::check_nonzero_size("sd", "v", v);
       if (v.size() == 1) return 0;
       return calc_sd(v.size(), &v[0]);
     }
@@ -77,7 +78,7 @@ namespace stan {
      */
     template <int R, int C>
     var sd(const Eigen::Matrix<var,R,C>& m) {
-      stan::math::validate_nonzero_size(m,"sd");
+      stan::error_handling::check_nonzero_size("sd", "m", m);
       if (m.size() == 1) return 0;
       return calc_sd(m.size(), &m(0));
     }

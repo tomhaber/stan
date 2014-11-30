@@ -1,5 +1,5 @@
-#ifndef __STAN__GM__PARSER__PROGRAM_GRAMMAR__HPP__
-#define __STAN__GM__PARSER__PROGRAM_GRAMMAR__HPP__
+#ifndef STAN__GM__PARSER__PROGRAM_GRAMMAR__HPP
+#define STAN__GM__PARSER__PROGRAM_GRAMMAR__HPP
 
 #include <string>
 #include <sstream>
@@ -12,6 +12,7 @@
 #include <stan/gm/grammars/expression_grammar.hpp>
 #include <stan/gm/grammars/var_decls_grammar.hpp>
 #include <stan/gm/grammars/statement_grammar.hpp>
+#include <stan/gm/grammars/functions_grammar.hpp>
 
 namespace stan { 
 
@@ -34,6 +35,7 @@ namespace stan {
       expression_grammar<Iterator> expression_g;
       var_decls_grammar<Iterator> var_decls_g;
       statement_grammar<Iterator> statement_g;
+      functions_grammar<Iterator> functions_g;
 
       // rules
 
@@ -69,6 +71,7 @@ namespace stan {
                               std::vector<var_decl>(), 
                               whitespace_grammar<Iterator> >
       param_var_decls_r;
+
 
       boost::spirit::qi::rule<Iterator, 
                               program(),

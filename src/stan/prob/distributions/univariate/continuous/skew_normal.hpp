@@ -1,17 +1,19 @@
-#ifndef __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__SKEW__NORMAL__HPP__
-#define __STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__SKEW__NORMAL__HPP__
+#ifndef STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__SKEW__NORMAL__HPP
+#define STAN__PROB__DISTRIBUTIONS__UNIVARIATE__CONTINUOUS__SKEW__NORMAL__HPP
 
 #include <boost/random/variate_generator.hpp>
 #include <boost/math/distributions.hpp>
-#include <stan/prob/distributions/univariate/continuous/uniform.hpp>
-
 #include <stan/agrad/partials_vari.hpp>
-#include <stan/math/error_handling.hpp>
+#include <stan/error_handling/scalar/check_finite.hpp>
+#include <stan/error_handling/scalar/check_not_nan.hpp>
+#include <stan/error_handling/scalar/check_positive.hpp>
+#include <stan/error_handling/scalar/check_consistent_sizes.hpp>
 #include <stan/math/functions/owens_t.hpp>
+#include <stan/math/functions/value_of.hpp>
 #include <stan/meta/traits.hpp>
 #include <stan/prob/constants.hpp>
+#include <stan/prob/distributions/univariate/continuous/uniform.hpp>
 #include <stan/prob/traits.hpp>
-#include <stan/math/functions/value_of.hpp>
 
 namespace stan {
 
@@ -22,14 +24,14 @@ namespace stan {
     typename return_type<T_y,T_loc,T_scale,T_shape>::type
     skew_normal_log(const T_y& y, const T_loc& mu, const T_scale& sigma, 
                     const T_shape& alpha) {
-      static const char* function = "stan::prob::skew_normal_log(%1%)";
+      static const std::string function("stan::prob::skew_normal_log");
 
       using std::log;
       using stan::is_constant_struct;
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::value_of;
       using stan::prob::include_summand;
 
@@ -44,23 +46,15 @@ namespace stan {
       double logp(0.0);
 
       // validate args (here done over var, which should be OK)
-      if (!check_not_nan(function, y, "Random variable", &logp))
-        return logp;
-      if (!check_finite(function, mu, "Location parameter", 
-                        &logp))
-        return logp;
-      if (!check_finite(function, alpha, "Shape parameter", 
-                        &logp))
-        return logp;
-      if (!check_positive(function, sigma, "Scale parameter", 
-                          &logp))
-        return logp;
-      if (!(check_consistent_sizes(function,
-                                   y,mu,sigma,alpha,
-                                   "Random variable","Location parameter",
-                                   "Scale parameter", "Shape paramter",
-                                   &logp)))
-        return logp;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_finite(function, "Shape parameter", alpha);
+      check_positive(function, "Scale parameter", sigma);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", sigma,
+                             "Shape paramter", alpha);
 
       // check if no variables are involved and prop-to
       if (!include_summand<propto,T_y,T_loc,T_scale,T_shape>::value)
@@ -148,12 +142,12 @@ namespace stan {
     typename return_type<T_y,T_loc,T_scale,T_shape>::type
     skew_normal_cdf(const T_y& y, const T_loc& mu, const T_scale& sigma, 
                     const T_shape& alpha) {
-      static const char* function = "stan::prob::skew_normal_cdf(%1%)";
+      static const std::string function("stan::prob::skew_normal_cdf");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::owens_t;
       using stan::math::value_of;
 
@@ -166,24 +160,17 @@ namespace stan {
             && stan::length(alpha)))
         return cdf;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf))
-        return cdf;
-      if (!check_finite(function, mu, "Location parameter", &cdf))
-        return cdf;
-      if (!check_not_nan(function, sigma, "Scale parameter", &cdf))
-        return cdf;
-      if (!check_positive(function, sigma, "Scale parameter", &cdf))
-        return cdf;
-      if (!check_finite(function, alpha, "Shape parameter", &cdf))
-        return cdf;
-      if (!check_not_nan(function, alpha, "Shape parameter", &cdf))
-        return cdf;
-      if (!(check_consistent_sizes(function,
-                                   y,mu,sigma,alpha,
-                                   "Random variable","Location parameter",
-                                   "Scale parameter","Shape paramter",
-                                   &cdf)))
-        return cdf;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_not_nan(function, "Scale parameter", sigma);
+      check_positive(function, "Scale parameter", sigma);
+      check_finite(function, "Shape parameter", alpha);
+      check_not_nan(function, "Shape parameter", alpha);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", sigma,
+                             "Shape paramter", alpha);
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale, T_shape> 
         operands_and_partials(y, mu, sigma, alpha);
@@ -251,13 +238,13 @@ namespace stan {
     typename return_type<T_y,T_loc,T_scale,T_shape>::type
     skew_normal_cdf_log(const T_y& y, const T_loc& mu, const T_scale& sigma, 
                     const T_shape& alpha) {
-      static const char* function = "stan::prob::skew_normal_cdf_log(%1%)";
+      static const std::string function("stan::prob::skew_normal_cdf_log");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
       using stan::math::value_of;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::owens_t;
 
       double cdf_log(0.0);
@@ -269,24 +256,18 @@ namespace stan {
             && stan::length(alpha)))
         return cdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, mu, "Location parameter", &cdf_log))
-        return cdf_log;
-      if (!check_not_nan(function, sigma, "Scale parameter", &cdf_log))
-        return cdf_log;
-      if (!check_positive(function, sigma, "Scale parameter", &cdf_log))
-        return cdf_log;
-      if (!check_finite(function, alpha, "Shape parameter", &cdf_log))
-        return cdf_log;
-      if (!check_not_nan(function, alpha, "Shape parameter", &cdf_log))
-        return cdf_log;
-      if (!(check_consistent_sizes(function,
-                                   y,mu,sigma,alpha,
-                                   "Random variable","Location parameter",
-                                   "Scale parameter","Shape paramter",
-                                   &cdf_log)))
-        return cdf_log;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_not_nan(function, "Scale parameter", sigma);
+      check_positive(function, "Scale parameter", sigma);
+      check_finite(function, "Shape parameter", alpha);
+      check_not_nan(function, "Shape parameter", alpha);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", sigma,
+                             "Shape paramter", alpha);
+
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale, T_shape> 
         operands_and_partials(y, mu, sigma, alpha);
@@ -341,12 +322,12 @@ namespace stan {
     typename return_type<T_y,T_loc,T_scale,T_shape>::type
     skew_normal_ccdf_log(const T_y& y, const T_loc& mu, const T_scale& sigma, 
                          const T_shape& alpha) {
-      static const char* function = "stan::prob::skew_normal_ccdf_log(%1%)";
+      static const std::string function("stan::prob::skew_normal_ccdf_log");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
-      using stan::math::check_not_nan;
-      using stan::math::check_consistent_sizes;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
+      using stan::error_handling::check_not_nan;
+      using stan::error_handling::check_consistent_sizes;
       using stan::math::owens_t;
       using stan::math::value_of;
 
@@ -359,24 +340,17 @@ namespace stan {
             && stan::length(alpha)))
         return ccdf_log;
 
-      if (!check_not_nan(function, y, "Random variable", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, mu, "Location parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_not_nan(function, sigma, "Scale parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_positive(function, sigma, "Scale parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_finite(function, alpha, "Shape parameter", &ccdf_log))
-        return ccdf_log;
-      if (!check_not_nan(function, alpha, "Shape parameter", &ccdf_log))
-        return ccdf_log;
-      if (!(check_consistent_sizes(function,
-                                   y,mu,sigma,alpha,
-                                   "Random variable","Location parameter",
-                                   "Scale parameter","Shape paramter",
-                                   &ccdf_log)))
-        return ccdf_log;
+      check_not_nan(function, "Random variable", y);
+      check_finite(function, "Location parameter", mu);
+      check_not_nan(function, "Scale parameter", sigma);
+      check_positive(function, "Scale parameter", sigma);
+      check_finite(function, "Shape parameter", alpha);
+      check_not_nan(function, "Shape parameter", alpha);
+      check_consistent_sizes(function,
+                             "Random variable", y,
+                             "Location parameter", mu,
+                             "Scale parameter", sigma,
+                             "Shape paramter", alpha);
 
       agrad::OperandsAndPartials<T_y, T_loc, T_scale, T_shape> 
         operands_and_partials(y, mu, sigma, alpha);
@@ -435,17 +409,14 @@ namespace stan {
                     RNG& rng) {
       boost::math::skew_normal_distribution<>dist (mu, sigma, alpha);
 
-      static const char* function = "stan::prob::skew_normal_rng(%1%)";
+      static const std::string function("stan::prob::skew_normal_rng");
 
-      using stan::math::check_positive;
-      using stan::math::check_finite;
+      using stan::error_handling::check_positive;
+      using stan::error_handling::check_finite;
 
-      if (!check_finite(function, mu, "Location parameter"))
-        return 0;
-      if (!check_finite(function, alpha, "Shape parameter"))
-        return 0;
-      if (!check_positive(function, sigma, "Scale parameter"))
-        return 0;
+      check_finite(function, "Location parameter", mu);
+      check_finite(function, "Shape parameter", alpha);
+      check_positive(function, "Scale parameter", sigma);
 
       return quantile(dist, stan::prob::uniform_rng(0.0,1.0,rng));
     }
