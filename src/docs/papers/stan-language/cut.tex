@@ -1,0 +1,445 @@
+\section[Why Stan?]{Why \proglang{Stan}?}
+%% Note: If there is markup in \(sub)section, then it has to be escape as above.
+
+We did not set out to build \proglang{Stan} as it currently exists.%
+%
+\footnote{\proglang{Stan}'s home page, \url{http://mc-stan.org/},
+  links to the \proglang{Stan} manual, example models including translations of
+  the \proglang{BUGS} examples and the models from \citep{GelmanHill:2007},
+  getting started instructions and full documentation for \proglang{Stan}'s
+  interfaces for the command line shell (\pkg{CmdStan}), \proglang{Python}
+  (\pkg{PyStan}), and \proglang{R} (\pkg{RStan}), and the source code repositories
+  and issue trackers.}
+%
+Our original goal was to apply full Bayesian inference to the sort of multilevel
+generalized linear models discussed in Part~II of
+\citep{GelmanHill:2007}, which are structured with grouped and
+interacted predictors at multiple levels, hierarchical covariance
+priors, nonconjugate coefficient priors, latent effects as in
+item-response models, and varying output link functions and
+distributions.
+
+These models turned out to be a challenge for existing general purpose
+inference software.  A direct encoding in \proglang{BUGS}
+\citep{LunnEtAl:2000,LunnEtAl:2009,LunnEtAl:2012} or
+\proglang{JAGS}~\citep{Plummer:2003} can grind these tools to a halt.
+We began by adding custom vectorized logistic regressions to
+\proglang{JAGS} using \proglang{C++} to overcome the cost of
+interpretation.  Although this is much faster than looping in
+\proglang{JAGS}, it quickly became clear that the root of the problem
+was the slow convergence of conditional sampling when parameters were
+highly correlated in the posterior, as for time-series models and
+hierarchical models with interacted predictors.  We finally realized
+we needed a better sampler, not a more efficient implementation of
+Gibbs sampling.
+
+We briefly considered trying to tune proposals for a random-walk
+Metropolis-Hastings sampler, but that seemed too problem specific and
+not even necessarily possible without some kind of adaptation rather
+than a global tuning of the proposals. 
+
+We were hearing more about Hamiltonian Monte Carlo (HMC) sampling,
+which appeared promising but was also problematic in that the
+Hamiltonian dynamics simulation requires the gradient of the log
+posterior.  Although not difficult in theory for most functions,
+computing these gradients by hand on a model-by-model basis is very
+tedious and error prone.  That is when we discovered reverse-mode
+algorithmic differentiation, which, given a templated \proglang{C++}
+function for the log posterior, automatically computes its analytic
+gradient up to machine precision accuracy in only a few multiples of
+the time to evaluate the log probability function itself.%
+%
+\footnote{Hessian matrices (i.e., all second order derivatives) are
+  more expensive to calculate; each row corresponds to a parameter and
+  is filled by the gradient of the derivative of the log probability
+  function with respect to the parameter.}
+%
+We explored existing algorithmic differentiation packages with open
+licenses such as \pkg{RAD} \citep{Gay:2005} and its repackaging in the
+Sacado module of the \pkg{Trilinos} toolkit, and the \pkg{CppAD}
+package of the COIN-OR toolkit \citep{BellBurke:2008}.  Both packages,
+however, supported few special functions (e.g., probability functions,
+log gamma, inverse logit) or linear algebra operations (e.g., Cholesky
+decompositions, matrix division), and neither are easily or modularly
+extensible.
+
+Consequently we built our own reverse-mode algorithmic differentiation package.
+At that point, we ran into the problem that we could not just plug in
+the probability functions from a package like \pkg{Boost} because they
+weren't templated generally enough across all arguments.  Rather
+than pay the price of promoting floating point values to algorithmic
+differentiation variables, we wrote our own fully templated
+probability functions and other special functions.
+
+Next, we integrated the \proglang{C++} package \pkg{Eigen} for matrix
+operations and linear algebra functions.  \pkg{Eigen} makes extensive
+use of expression templates for lazy evaluation and the curiously
+recurring template pattern (CRTP) to implement concepts without
+virtual function calls; \cite{VandevoordeJosuttis:2002} provide a
+complete description of template metaprogramming techniques.
+Unfortunately, we ran into the same problem with Eigen as with the
+existing probability libraries---it doesn't support mixed operations
+of algorithmic differentiation variables and primitives like
+\code{double}.  Although we initially began by promoting
+floating-point vectors to algorithmic differentiation variables, we
+later completely rewrote mixed-mode operations like multiplying a data
+matrix by a parameter vector.  To compute derivatives of matrix
+operations such as division and inverse, we implemented specialized
+derivatives using the rules described by \cite{Giles:2008}.
+
+At this point, we could fit models coded directly in \proglang{C++} on
+top of the pre-release versions of the \proglang{Stan} application
+programming interface (API).  Seeing how well this all worked, we set
+our sights on the generality and ease of use of \proglang{BUGS} and
+designed a modeling language in which statisticians could write their
+models in familiar notation that could be transformed to efficient
+\proglang{C++} code before being compiled into an efficient executable
+program.  Although we started with the target of specifying directed
+graphical models, our first implementation turned out to be a more
+general imperative form of specifying log probability functions;
+\proglang{BUGS} models could be translated line for line, but the
+\proglang{Stan} language also supports much richer imperative
+constructs like conditionals, while loops, and local variables.  This
+paper is primarily about the \proglang{Stan} language and how it can
+be used to specify statistical models.
+ 
+The next problem we ran into when we started implementing richer
+models was variables with constrained support, such as positive variables, 
+simplexes, and covariance matrices.  
+Efficient implementation of these constraints
+required the introduction of typed variables which automatically transformed to
+unconstrained support with suitable adjustments to the log probability
+from the log absolute Jacobian determinant of the inverse transforms.
+
+Even with the prototype compiler generating models, we still faced a
+major hurdle for ease of use. The efficiency of HMC is very sensitive
+to two tuning parameters, the discretization interval (i.e., step
+size) and the total simulation time (i.e., number of steps).  The
+interval size parameter could be tuned during warm-up based on
+Metropolis rejection rates, but the number of steps proved difficult
+to tune without sacrificing the detailed balance of the sampler.  This
+led to the development of the No U-Turn (NUTS) sampler
+\citep{HoffmanGelman:2011}.  Roughly speaking, NUTS builds a tree of
+possible samples by randomly simulating Hamiltonian dynamics both
+forwards and backwards in time until the combined trajectory turns
+back on itself.  Once the trajectory has terminated, a new sample is
+drawn from the tree.  In its original version, NUTS also estimates a
+step size during warmup based on a target acceptance probability. 
+
+We thought we were home free, but when we measured the
+speed of some \proglang{BUGS} examples versus \proglang{Stan} we were
+very disappointed.  \proglang{BUGS}'s very first example model, Rats,
+ran more than an order of magnitude faster in \proglang{JAGS} than in
+\proglang{Stan}.  Rats is a tough test case because the conjugate
+priors and lack of posterior correlations make it an ideal candidate
+for efficient Gibbs sampling.  Realizing that we were doing redundant
+calculations, we wrote a vectorized form of the normal distribution
+for multiple variates with the same mean and scale, which sped things
+up a bit.  Performance was lacking until we finally figured out how
+to both eliminate redundant calculations and partially evaluate the
+gradients using a combination of expression templates and
+metaprogramming.
+
+When we attempted to fit a time-series model, we found that
+normalizing the data to unit sample mean and variance sped up the fits
+by an order of magnitude.  In hindsight this isn't surprising, as the
+performance of the numerical simulation in HMC scales with the
+variation of the parameter scales.  In \proglang{Stan} 1.0 we
+introduced an adaptive diagonal metric (mass matrix) into our HMC
+implementations that allowed the parameter scales to be standardized
+automatically; \proglang{Stan} 2.0 added an option to estimate a dense metric
+(mass matrix) and a full covariance standardization of the posterior.
+
+Because the diagonal and dense metrics perform only a global
+standardization, the performance of \proglang{Stan} in models where
+the relative parameter scales varies by location, such as hierarchical
+and latent models, can suffer (hierarchical modeling is covered in
+Section~\ref{hierarchical-modeling.section} and reparameterizations to speed it
+up in Section~\ref{centering.section}).  Riemannian manifold Hamiltonian Monte
+Carlo (RMHMC) introduces a location-dependent metric that can overcome
+these final hurdles \citep{GirolamiCalderhead:2011}; \proglang{Stan} has a
+prototype implementation of RMHMC based on the SoftAbs metric of
+\citep{Betancourt:2012}, using a generalization of NUTS to Riemannian
+manifolds \citep{Betancourt:2013}.
+
+=============================================
+
+\subsection{Variable definition and block execution summary}
+
+A table summarizing the point at which variables are read, written,
+or defined is provided in Figure~\ref{block-actions.fig}. 
+%
+\begin{figure}
+\begin{center}
+\begin{tabular}{l|c|l|l}
+{ Block} & { Statements?} & { Action} & { Evaluated}
+\\\hline\hline
+\code{user initialization} & n/a & transform & chain
+\\[3pt]
+\code{random initialization} & n/a & randomize & chain 
+\\\hline\hline
+\code{data} & no & read & chain  
+\\
+\code{transformed data} & yes & evaluate & chain  
+\\ \hline
+\code{parameters} & no & inv.\ transform, Jacobian & leapfrog  \\
+& & inv.\ transform, write & sample 
+\\[3pt]
+\code{transformed parameters} & yes & evaluate & leapfrog \\
+& & write & sample 
+\\\hline
+\code{model} & yes & evaluate & leapfrog
+\\\hline
+\code{generated quantities} & yes & evaluate & sample \\
+& & write & sample
+\end{tabular}
+\end{center}
+\caption{\it Each \proglang{Stan} program block admits certain actions that are evaluated
+  at specific times during sampling.  For example, the parameter initialization in
+  the \code{data} block requires a read operation once per chain.}
+\label{block-actions.fig}
+\end{figure}
+%
+This table is defined assuming HMC or NUTS, both of which apply the
+leapfrog integrator to simulate the Hamiltonian dynamics
+\citep{HoffmanGelman:2014,Neal:2011} of a particle representing a
+parameter.  Each leapfrog step requires an evaluation of the log
+density and its gradient.  NUTS automatically adapts the integration
+time (and hence number of leapfrog steps) each iteration and uses slice
+sampling for improved acceptance, whereas basic HMC sets integration
+time statically in the command-line parameters using
+\code{engine=static int\_time=t}, with \code{t} set to some positive
+floating point value.
+%
+\begin{figure}
+\begin{center}
+\begin{tabular}{l|l}
+{ Variable Categorization} & { Declaration Block}
+\\ \hline\hline
+% constants & \code{transformed data}
+% \\ \hline
+unmodeled data & \code{data}, \code{transformed data}
+\\ 
+modeled data & \code{data}, \code{transformed data}
+\\ \hline
+missing data & \code{parameters}, \code{transformed parameters}
+\\
+modeled parameters & \code{parameters}, \code{transformed parameters}
+\\
+unmodeled parameters & \code{data}, \code{transformed data}
+\\[2pt] \hline
+generated quantities & \code{transformed data}, \code{transformed parameters}, 
+\\ 
+& \code{generated quantities}
+\\ \hline\hline
+loop indices & any loop statement
+\\ \hline
+local variables & any statement block
+\\ 
+\end{tabular}
+\end{center}
+\caption{\it Variables of each categorization must be declared in
+  specific blocks.  Data may also be expressed using numeric
+  literals.}\label{variable-kinds.fig}
+\end{figure}
+%
+\citet[p.~366]{GelmanHill:2007} provide a taxonomy of the kinds of
+variables used in Bayesian models.  Figure~\ref{variable-kinds.fig}
+contains Gelman and Hill's taxonomy aligned with the corresponding
+locations of declarations and definitions in \proglang{Stan}.
+Unmodeled data variables includes size constants and regression
+predictors.  Modeled data variables include known outcomes or
+measurements.  A data variable or constant literal is modeled in a
+\proglang{Stan} program if it (or a variable that depends on it)
+occurs on the left-hand side of a sampling statement.  Unmodeled
+parameters are provided as data, and are either known or fixed to some
+value for convenience, a typical use being the parameters of a weakly
+informative prior for a parameter.
+
+A modeled parameter is given a distribution by the model (usually
+dependent on data and correlated with other parameters).  This can be
+done either by placing it (or a variable that depends on it) on the
+left-hand side of a sampling statement or by declaring the variable
+with a constraint (see Section~\ref{implicit-prior.section}).
+
+Any variable that occurs in a (transformed) data block can also be
+provided instead as a constant.  So a user may decide to write \code{y
+~ normal(0,1)} or to declare \code{mu} and \code{sigma} as data, and
+write \code{y ~ normal(mu,sigma)}.  The latter choice allows the
+parameters to be changed without recompiling the model, but requires
+them to be specified as part of the input data.
+
+Missing data is a new variable type included here.  In order to
+perform inference on missing data, it must be declared as a parameter
+and modeled; see \citep{GelmanEtAl:2013} for a discussion of
+statistical models of missing data.  Unlike \proglang{BUGS}, data may
+not contain a mixture of missing (i.e., \code{NA}) values and numeric
+values.  \proglang{Stan} uses the built-in \proglang{C++}
+floating-point (and integer) arithmetic, for which there is no
+equivalent of \code{NA}.  See \citep{Stan:2013} for strategies for
+coding missing data problems in \proglang{Stan}.
+
+Generated quantities include simple transforms of data required for
+printing.  For example, the variable of interest might be a standard
+deviation, resulting from transforming a precision parameter $\tau$ to
+a scale parameter $\sigma = \tau^{-1/2}$.  A non-linearly transformed
+variable will have different effective sample sizes and $\hat{R}$
+statistics than the variable it is derived from, so it is convenient
+to define variables of interest in the generated quantities block to
+calculate these statistics automatically.  As seen in the example in
+Figure~\ref{hier-binom.fig}, generated quantities may also be used for
+event probability estimates.
+
+The generated quantities block may also be used for forward
+simulations, generating values to make predictions or to perform
+posterior predictive checks; see \citep{GelmanEtAl:2013} for more
+information.  The generated quantities block is the only location in
+\proglang{Stan} in which random-number generators may be applied
+explicitly (they are implicit in parameters).
+
+Calculations in the generated quantities block do not impact the
+estimates of the parameters.  In this way, generated quantities can be
+used for predictions with a behavior not unlike that of cut in
+\proglang{BUGS} \citep{LunnEtAl:2012}.  Nevertheless, we recommend
+full Bayesian inference in general, and only use the generated
+quantities block for efficiency and clarity of code.  For example, in
+many models, generating predictions for unseen data or replicating
+data for posterior predictive checks does not affect the estimation of
+the parameters of interest.
+
+The list in Figure~\ref{variable-kinds.fig} is completed with two
+types of local variables, loop indices and traditional local
+variables.  Unlike \proglang{BUGS}, \proglang{Stan} allows local
+variables to be declared and assigned.  For example, it is possible to
+compute the sum of the squares of entries in an array or vector
+\code{y} as follows.%
+%
+\footnote{The built-in squared norm function is the right way to
+  implement sums of squares in \proglang{Stan}.}
+%
+\begin{Code}
+{ 
+  real sum_of_squares;
+  sum_of_squares <- 0;
+  for (n in 1:N)
+    sum_of_squares <- sum_of_squares + y[n] * y[n];
+}  
+\end{Code}
+%
+Local variables may not be declared with constraints, because there is
+no location at which it makes sense to test that they satisfy the
+constraints. 
+
+===================================================
+
+
+
+
+\subsection{The non-centered parameterization for hierarchical models}\label{centering.section}
+
+Consider the following hierarchical logistic regression model fragment.
+%
+\begin{Code}
+data {
+  int<lower=1,upper=K> group[N];  // group of data item n
+}  
+parameters {
+  ...
+  vector mu;             // mean coeff
+  real<lower=0> sigma;   // coeff scale
+  vector[K] beta;        // coeff for group k
+}
+model {
+  beta ~ normal(mu,sigma);
+  for (n in 1:N)
+    y[n] ~ bernoulli_logit(beta[group[n]] * x[n]);
+  ...
+}
+\end{Code}
+%
+With this parameterization, the \code{beta[k]} are centered around
+\code{mu}.  As a result, a change in \code{sigma} is amplified by the
+lower-level parameters and introduces a large change in density across
+the posterior.  Unfortunately the expected density variation of an HMC
+transition is limited%
+%
+\footnote{The limited density variation is ultimately a consequence of
+  a constant metric.  An additional benefit of RMHMC are transitions
+  that can cover much larger variations in density, making it uniquely
+  suited to these models; see \citep{Neal:2011}.}
+%
+and many transitions are required to explore the full posterior.  The
+resulting sampler devolves into a random walk with high
+autocorrelations.  \cite{BetancourtGirolami:2013} provide a detailed
+analysis of the benefits of centered vs.\ non-centered
+parameterizations of hierarchical models in Euclidean and Riemannian
+HMC, with the conclusion that non-centered are best when data are
+sparse and centered when the data strongly identifies coefficients.
+
+The following reparameterization employs a non-centered
+parameterization for comparison.
+%
+\begin{Code}
+parameters {
+  ...
+  vector[K] beta_raw;  // replaces beta as parameter  
+}
+transformed parameters {
+  vector[K] beta;      // beta now a transformed parameter
+  beta <- mu + sigma * beta_raw;
+}
+model {
+  beta_raw ~ normal(0,1);  // beta now sampled from unit normal
+  ...
+}
+\end{Code}
+%
+This reparameterization removes the particular correlations amongst the
+hierarchical variables that would otherwise limit the effectiveness
+of the samplers.  We recommend starting with the more natural centered
+parameterization and moving to the non-centered parameterization if
+sampling of the coefficients does not mix well.%
+%
+\footnote{As the saying goes in computer science, it is easier to
+  optimize a correct program than debug an optimized program.}
+
+=============================================
+
+\subsubsection{Metropolis-Hastings}
+
+Random-walk Metropolis-Hastings samplers with multivariate normal
+proposals have been prototyped, but not yet integrated into the
+released versions of \proglang{Stan}.  The primary purpose of
+implementing Metropolis-Hastings is to provide baselines against which
+to measure more efficient approaches to sampling.  The covariance
+matrix used can be adapted during warmup, assuming either equal
+diagonal covariance, diagonal covariance, or a full covariance matrix.
+Metropolis-Hastings does not require any derivatives of the log
+probability function, but the lack of gradient information induces
+random walk behavior, leading to slow mixing.
+
+
+\subsubsection{Ensemble samplers}
+
+Two flavors of ensemble samplers are also in the works: an affine invariant
+ensemble sampler \citep{GoodmanWeare:2010} and a differential
+evolution sampler \citep{TerBraak:2006}.  Ensemble samplers do not
+require derivative information, but typically require at least as many
+chains to be run as the number of dimensions in order to have full
+rank search of the posterior.  They also require slightly different
+management of output due to a single sampler instance producing
+multiple correlated chains of draws.
+
+\proglang{Stan} will soon have an implementation of Riemannian
+manifold Hamiltonian Monte Carlo (RMHMC)
+\citep{GirolamiCalderhead:2011}, using the SoftAbs metric to robustly
+incorporate posterior curvature into the Hamiltonian simulation
+\cite{Betancourt:2012}.  \proglang{Stan}'s MCMC framework also makes
+it straightforward to incorporate other metrics.  This implementation
+will also generalize NUTS to Riemannian manifolds
+\citep{Betancourt:2013}.  Both support adapting step sizes during
+warmup.  RMHMC with SoftAbs uses first, second, and third order
+derivatives to adapt to the local curvature of the posterior.
+
+
+

@@ -1,0 +1,181 @@
+Major comments:
+
+Let me start off by saying I definitely would like to see a revision of
+this paper published in JSS.  Stan represents a substantial contribution to
+the landscape of statistical computing, and therefore this manuscript
+represents exactly the sort of thing I, as a reader of JSS, like to see in
+print.
+
+That said, I think the manuscript probably needs substantial organizational
+improvements before publication.  It currently reads like a pretty thorough
+brain dump from the Stan development team, which is sort of entertaining but
+not in my opinion appropriate for publication.  Large sections of the
+manuscript are redundant, some should be relegated to supplemental material
+and/or just point to the language reference manual, and the overall flow of
+the paper is confusing.  I list a number of specific suggestions below which
+I believe will improve readability.  I would be happy to review a revised
+manuscript, and would simply encourage the authors to try to read this from
+the perspective of someone not already intimately familiar with Stan.
+
+Specific comments:
+
+abstract:  the BFGS authors’ names are not rendering correctly
+
+What is "< Python"?
+
+What is meant by using Stan for "I/O transforms"?  No functionality is
+described this way in the body of the paper
+
+p2:  I would really like to see a standard "Introduction" section that states
+the high level goals of the Stan project, and described the organization of
+the paper.  The intro is totally inaccessible to someone not already familiar
+with Stan.  IMO the current section 1. "Why Stan?" could be more aptly titled
+"A brief history of Stan’s development", and possibly relegated to an appendix
+or to supplemental material.
+
+"A direct encoding in BUGS... can grind these tools to a halt".  Why?  Do
+these tools crash?  Do they fail to iterate?  Are the iterations too slow?
+
+p3: "This paper is primarily about..." — this should be at the start of the
+section!  It’s the closest thing in Section 1 to providing a high level
+description of what this paper is about!
+
+p5: Section 2: I’d suggest Section 2 be organized around
+"Core Stan Functionality" in the context of a simple model.
+
+I’m not clear on what exactly should be in the R dump that Stan reads in.
+
+p 8: "Stan’s behavior is fully specified by ... "  How exactly can these
+parameters be specified?  I assume it’s just with something like
+"section option=value format", but the only thing that is demonstrated up to
+this point is specifying "data file=...".  Is the section name always required?
+
+What is the n_divergent quantity?
+
+p14:  I think the Data Types section should probably come next, followed by
+what is currently Section 3, which I would rename something like
+"Model Specification". I would also recommend a few sentences indicating the
+roadmap for the paper at this point.  Something along the lines of
+"Having demonstrated the key functionality of Stan in section 2, we will now
+provide more detail on the language by which data and models are specified.
+We begin with the data types and data structures supported in Stan..."
+
+Section 3.1:  this shouldn’t be a separate subsection, this defines the
+motivating model that is referred to by every subsequent subsection in the
+section.  It should be described at the top level description of the section.
+
+p16: should be a colon at the end of "then defines it to be the
+standardization of x:"
+
+"whereas lambda is constrained..."  I think this should be "kappa", not
+lambda.
+
+p 17:  I would cut the part about "Furthermore different sampler ... see
+section 8 for details", or explain it better if this is an important point.
+Currently I don’t know what "different instantiations" this is referring to.
+
+"the log probability function I can be defined to return negative infinity or
+a special not-a-number value".  How?  Is this actually a user defined option,
+and if so where is it specified?
+
+p18:  "so the absolute log Jacobian"... this is missing "determinant"
+
+"local variables can be used..."  This is the first mention of local variables,
+how can they be defined and what are they?  Or just move the Data types
+section before this section.
+
+I think "posterior predictive checks" is a more common phrasing used than
+"predictive posterior checks".
+
+p19:  "Apply a hierarchical model then considering posterior inference
+appropriately adjusts for multiple comparisons" — I’m not sure what point
+this is trying to make and probably just needs rephrasing.  Is the point
+that posterior summaries of this particular rank quantity have the property
+of "properly adjusting for multiple comparisons"?  Or just that posterior
+distributions in general have this property?
+
+It doesn’t seem to be mentioned anywhere how the user can supply non-random
+initializations.  I assume this is done via the R dump, but I’d like to see
+how.
+
+"the default initialization is to randomly generate values uniformly on [-2,2]
+by default".  At least one of the "defaults" is redundant.
+
+"the table is defined assuming HMC or NUTS samplers"  are there currently
+non-NUTS HMC samplers?
+
+I feel that the entire section 3.9 should be cut or moved to an appendix.
+
+P21: I think the "Implicit uniform priors" section should be integrated into
+the "model block" section
+
+p22: "uniform over its support":  I assume this should be "its constrained
+support"?
+
+Consider moving section 3.11 to an appendix, perhaps titled something like
+"Best practices" or "general tips"
+
+In the model block of section 3.11, what is x?
+
+"change in sigma is amplified by lower-level parameters" What does
+"lower level parameters" refer to?
+
+p23: Again, I think readability would be improved by moving the data types
+section to before the "Models" section
+
+p24:  I don’t think expressions and type inference warrants a separate section
+outside of the data types section.  Maybe make it a subsection.
+
+"the type of each inference is declared statically..." this sentence is
+redundant, as the static typing is described in the first sentence of the
+section.
+
+p25: maybe add a sentence like "the primary function of the model block is
+to define the log probability function" at the start of section 6.1 in order
+to give some context.
+
+Can the lp__ be directly manipulated directly?  All the examples involve
+working with it via the increment_log_prob() function?  This could be made
+more clear.
+
+"because computation is only up to a proportion":  I prefer the phrasing
+"up to a proportionality constant"
+
+p 26: Could there be an example demonstrating the usage of print statements?
+
+"they need to be vectorized so that shared computations can be reused"
+— a minor quibble, but to me "vectorize" doesn’t imply this.  It makes sense
+that the author’s use of "vectorize" seems to actually mean that functions
+have been overloaded to accept vector valued arguments, but to me "vectorized"
+usually means that computations are performed via vector/matrix operations
+rather than, e.g. for loops.
+
+p27:  shouldn’t the brackets operator be defined in the data types section?
+
+"...stable than inversion e.g. (y-mu)’"  should have a non-breaking space
+between (y-mu) and /
+
+"specializations, multiply..." missing an "and" between specializations and
+multiply
+
+semicolon after "self transposed"
+
+"the previous example" which previous example is this referring to?  I’m
+assuming (y-mu)’Sigma(y-mu)?
+
+p 28: I can’t tell if you mean that it is a user-specified setting to
+determine whether to throw exceptions, return -infinity, or NaN.  If this is
+a user-setting, what is it, and why would I want to set it?  If it is not a
+setting, this could be clearer.
+
+p29: "in the example above... the logarithm of sigma need only be computed
+once"... I thought in the example above sigma was a constant and therefore
+log(sigma) wouldn’t be calculated at all.
+
+I would recommend cutting all material pertaining the MCMC options that have
+not been implemented.
+
+p30 and on:  I would recommend moving sections 9, 10, 11 to a supplementary
+material called something like "develop notes".  Maybe a thusly titled supp
+material would also be a good place for the "a brief history of Stan’s
+development" from section 1.

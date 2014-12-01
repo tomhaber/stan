@@ -1,0 +1,37 @@
+This journal article provides a nice abridged summary of the Stan
+probabilistic programming system. The history of Stan positions the
+system as a successor to the BUGS/JAGS Bayesian inference systems.
+This section makes clear that the primary contribution of Stan is not
+being a compiled JAGS but more of a compiled Hamiltonian Monte Carlo
+sampler. Stan is an impressive piece of software with many components.
+This article covers all aspects of this complex system highlighting
+the modeling language, the various inference engines supported, and
+all the optimizations done on the backend to make the system
+performant.
+
+I have several nitpicks that I believe should be corrected before the
+paper is published.
+
+* The abstract should refer to Broyden-Fletcher-Goldfarb-Shanno
+algorithm as BFGS. That is how it is referred to in the rest of the
+paper and should be stated as such.
+
+* The example problem in section 2.1 should not be across page breaks.
+
+* In Section 1 (RHMC) should be (RMHMC)
+
+* Section 2 is called Overview but would more accurately be described
+as an Example of the system
+
+* Section 2 involves sampling an example model, diagnosing the
+sampler, and then running an optimizer over the program. This
+introduction of the optimizer seems like it should be introduced
+before diagnosing the sampler.
+
+* Section 3 is called Models but is largely about Modeling Language. A
+more informative section title would help here.
+
+* Unsure why the same model can't be used in Section 2 and Section 3
+
+* Section 9 on Random Number Generation feels unnecessary as Stan does
+not make use of anything novel here.

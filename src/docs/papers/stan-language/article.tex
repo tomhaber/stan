@@ -3,6 +3,17 @@
 \renewcommand{\textfraction}{0.02}
 \renewcommand{\topfraction}{0.95}	% max fraction of floats at top
 
+
+
+
+
+\newenvironment{absolutelynopagebreak}
+  {\par\nobreak\vfil\penalty0\vfilneg
+   \vtop\bgroup}
+  {\par\xdef\tpd{\the\prevdepth}\egroup
+   \prevdepth=\tpd}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% declarations for jss.cls %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -117,10 +128,10 @@
 
   \proglang{Stan} can be called from the command line, through
   \proglang{R} using the \pkg{RStan} package, or through
-<  \proglang{Python} using the \pkg{PyStan} package.  All three
+  \proglang{Python} using the \pkg{PyStan} package.  All three
   interfaces support sampling or optimization-based inference and
   analysis, and \pkg{RStan} and \pkg{PyStan} also provide access to
-  log probabilities, gradients, Hessians, and I/O transforms.
+  log probabilities, gradients, Hessians, and data I/O.
 }
 
 \Keywords{
@@ -180,171 +191,43 @@
 %% include your article here, just as usual
 %% Note that you should use the \pkg{}, \proglang{} and \code{} commands.
 
-\section[Why Stan?]{Why \proglang{Stan}?}
-%% Note: If there is markup in \(sub)section, then it has to be escape as above.
+\section[Introduction]{Introduction}
 
-We did not set out to build \proglang{Stan} as it currently exists.%
+The goal of the \proglang{Stan} project is to provide a flexible
+probabilistic programming language for statistical modeling along with
+a suite of inference tools for fitting models that are robust,
+scalable, and efficient.
+
+\proglang{Stan} differs from \proglang{BUGS}
+\citep{LunnEtAl:2000,LunnEtAl:2009,LunnEtAl:2012} and
+\proglang{JAGS}~\citep{Plummer:2003} in two primary ways.  First,
+\proglang{Stan} is based on a new imperative probabilistic programming
+language that is more flexible and expressive than the declarative
+graphical modeling languages underlying \proglang{BUGS} or
+\proglang{JAGS}, in ways such as declaring variables with types and
+supporting local variables and conditional statements.  Second,
+\proglang{Stan}'s Markov chain Monte Carlo (MCMC) techniques are based
+on Hamiltonian Monte Carlo (HMC), a more efficient and robust sampler
+than Gibbs sampling or Metropolis-Hastings for models with complex
+posteriors.%
 %
-\footnote{\proglang{Stan}'s home page, \url{http://mc-stan.org/},
-  links to the \proglang{Stan} manual, example models including translations of
-  the \proglang{BUGS} examples and the models from \citep{GelmanHill:2007},
-  getting started instructions and full documentation for \proglang{Stan}'s
-  interfaces for the command line shell (\pkg{CmdStan}), \proglang{Python}
-  (\pkg{PyStan}), and \proglang{R} (\pkg{RStan}), and the source code repositories
-  and issue trackers.}
-%
-Our original goal was to apply full Bayesian inference to the sort of multilevel
-generalized linear models discussed in Part~II of
-\citep{GelmanHill:2007}, which are structured with grouped and
-interacted predictors at multiple levels, hierarchical covariance
-priors, nonconjugate coefficient priors, latent effects as in
-item-response models, and varying output link functions and
-distributions.
+\footnote{\cite{Neal:2011} analyzes the scaling benfit of HMC with
+  dimensionality.  \cite{Hoffman-Gelman:2014} provide practical
+  comparisions of \proglang{Stan}'s adaptive HMC algorithm with Gibbs,
+  Metropolis, and standard HMC samplers.}
 
-These models turned out to be a challenge for existing general purpose
-inference software.  A direct encoding in \proglang{BUGS}
-\citep{LunnEtAl:2000,LunnEtAl:2009,LunnEtAl:2012} or
-\proglang{JAGS}~\citep{Plummer:2003} can grind these tools to a halt.
-We began by adding custom vectorized logistic regressions to
-\proglang{JAGS} using \proglang{C++} to overcome the cost of
-interpretation.  Although this is much faster than looping in
-\proglang{JAGS}, it quickly became clear that the root of the problem
-was the slow convergence of conditional sampling when parameters were
-highly correlated in the posterior, as for time-series models and
-hierarchical models with interacted predictors.  We finally realized
-we needed a better sampler, not a more efficient implementation of
-Gibbs sampling.
+\proglang{Stan} has interfaces for the command-line shell
+(\pkg{CmdStan}), \proglang{Python} (\pkg{PyStan}), and \proglang{R}
+(\pkg{RStan}), and runs on Windows, Mac OS X, and Linux, and is
+open-source licensed.
 
-We briefly considered trying to tune proposals for a random-walk
-Metropolis-Hastings sampler, but that seemed too problem specific and
-not even necessarily possible without some kind of adaptation rather
-than a global tuning of the proposals. 
+The next section provides an overview of how \proglang{Stan} works by
+way of an extended example, after which the details of \proglang{Stan}'s
+programming language and inference mechanisms are provided.
 
-We were hearing more about Hamiltonian Monte Carlo (HMC) sampling,
-which appeared promising but was also problematic in that the
-Hamiltonian dynamics simulation requires the gradient of the log
-posterior.  Although not difficult in theory for most functions,
-computing these gradients by hand on a model-by-model basis is very
-tedious and error prone.  That is when we discovered reverse-mode
-algorithmic differentiation, which, given a templated \proglang{C++}
-function for the log posterior, automatically computes its analytic
-gradient up to machine precision accuracy in only a few multiples of
-the time to evaluate the log probability function itself.%
-%
-\footnote{Hessian matrices (i.e., all second order derivatives) are
-  more expensive to calculate; each row corresponds to a parameter and
-  is filled by the gradient of the derivative of the log probability
-  function with respect to the parameter.}
-%
-We explored existing algorithmic differentiation packages with open
-licenses such as \pkg{RAD} \citep{Gay:2005} and its repackaging in the
-Sacado module of the \pkg{Trilinos} toolkit, and the \pkg{CppAD}
-package of the COIN-OR toolkit \citep{BellBurke:2008}.  Both packages,
-however, supported few special functions (e.g., probability functions,
-log gamma, inverse logit) or linear algebra operations (e.g., Cholesky
-decompositions, matrix division), and neither are easily or modularly
-extensible.
 
-Consequently we built our own reverse-mode algorithmic differentiation package.
-At that point, we ran into the problem that we could not just plug in
-the probability functions from a package like \pkg{Boost} because they
-weren't templated generally enough across all arguments.  Rather
-than pay the price of promoting floating point values to algorithmic
-differentiation variables, we wrote our own fully templated
-probability functions and other special functions.
 
-Next, we integrated the \proglang{C++} package \pkg{Eigen} for matrix
-operations and linear algebra functions.  \pkg{Eigen} makes extensive
-use of expression templates for lazy evaluation and the curiously
-recurring template pattern (CRTP) to implement concepts without
-virtual function calls; \cite{VandevoordeJosuttis:2002} provide a
-complete description of template metaprogramming techniques.
-Unfortunately, we ran into the same problem with Eigen as with the
-existing probability libraries---it doesn't support mixed operations
-of algorithmic differentiation variables and primitives like
-\code{double}.  Although we initially began by promoting
-floating-point vectors to algorithmic differentiation variables, we
-later completely rewrote mixed-mode operations like multiplying a data
-matrix by a parameter vector.  To compute derivatives of matrix
-operations such as division and inverse, we implemented specialized
-derivatives using the rules described by \cite{Giles:2008}.
-
-At this point, we could fit models coded directly in \proglang{C++} on
-top of the pre-release versions of the \proglang{Stan} application
-programming interface (API).  Seeing how well this all worked, we set
-our sights on the generality and ease of use of \proglang{BUGS} and
-designed a modeling language in which statisticians could write their
-models in familiar notation that could be transformed to efficient
-\proglang{C++} code before being compiled into an efficient executable
-program.  Although we started with the target of specifying directed
-graphical models, our first implementation turned out to be a more
-general imperative form of specifying log probability functions;
-\proglang{BUGS} models could be translated line for line, but the
-\proglang{Stan} language also supports much richer imperative
-constructs like conditionals, while loops, and local variables.  This
-paper is primarily about the \proglang{Stan} language and how it can
-be used to specify statistical models.
- 
-The next problem we ran into when we started implementing richer
-models was variables with constrained support, such as positive variables, 
-simplexes, and covariance matrices.  
-Efficient implementation of these constraints
-required the introduction of typed variables which automatically transformed to
-unconstrained support with suitable adjustments to the log probability
-from the log absolute Jacobian determinant of the inverse transforms.
-
-Even with the prototype compiler generating models, we still faced a
-major hurdle for ease of use. The efficiency of HMC is very sensitive
-to two tuning parameters, the discretization interval (i.e., step
-size) and the total simulation time (i.e., number of steps).  The
-interval size parameter could be tuned during warm-up based on
-Metropolis rejection rates, but the number of steps proved difficult
-to tune without sacrificing the detailed balance of the sampler.  This
-led to the development of the No U-Turn (NUTS) sampler
-\citep{HoffmanGelman:2011}.  Roughly speaking, NUTS builds a tree of
-possible samples by randomly simulating Hamiltonian dynamics both
-forwards and backwards in time until the combined trajectory turns
-back on itself.  Once the trajectory has terminated, a new sample is
-drawn from the tree.  In its original version, NUTS also estimates a
-step size during warmup based on a target acceptance probability. 
-
-We thought we were home free, but when we measured the
-speed of some \proglang{BUGS} examples versus \proglang{Stan} we were
-very disappointed.  \proglang{BUGS}'s very first example model, Rats,
-ran more than an order of magnitude faster in \proglang{JAGS} than in
-\proglang{Stan}.  Rats is a tough test case because the conjugate
-priors and lack of posterior correlations make it an ideal candidate
-for efficient Gibbs sampling.  Realizing that we were doing redundant
-calculations, we wrote a vectorized form of the normal distribution
-for multiple variates with the same mean and scale, which sped things
-up a bit.  Performance was lacking until we finally figured out how
-to both eliminate redundant calculations and partially evaluate the
-gradients using a combination of expression templates and
-metaprogramming.
-
-When we attempted to fit a time-series model, we found that
-normalizing the data to unit sample mean and variance sped up the fits
-by an order of magnitude.  In hindsight this isn't surprising, as the
-performance of the numerical simulation in HMC scales with the
-variation of the parameter scales.  In \proglang{Stan} 1.0 we
-introduced an adaptive diagonal metric (mass matrix) into our HMC
-implementations that allowed the parameter scales to be standardized
-automatically; \proglang{Stan} 2.0 added an option to estimate a dense metric
-(mass matrix) and a full covariance standardization of the posterior.
-
-Because the diagonal and dense metrics perform only a global
-standardization, the performance of \proglang{Stan} in models where
-the relative parameter scales varies by location, such as hierarchical
-and latent models, can suffer (hierarchical modeling is covered in
-Section~\ref{hierarchical-modeling.section} and reparameterizations to speed it
-up in Section~\ref{centering.section}).  Riemannian manifold Hamiltonian Monte
-Carlo (RHMC) introduces a location-dependent metric that can overcome
-these final hurdles \citep{GirolamiCalderhead:2011}; \proglang{Stan} has a
-prototype implementation of RHMC based on the SoftAbs metric of
-\citep{Betancourt:2012}, using a generalization of NUTS to Riemannian
-manifolds \citep{Betancourt:2013}.
-
-\section{Overview}
+\section{Core Functionality}\label{example.section}
 
 This section describes the use of \proglang{Stan} from the command
 line for estimating a Bayesian model using both MCMC sampling for full
@@ -384,10 +267,12 @@ independent and identically distributed, with success probability
 using a loop as in \proglang{BUGS}, although it will run more slowly than the
 vectorized form:
 %
+\begin{absolutelynopagebreak}
 \begin{Code}
 for (n in 1:N)
   y[n] ~ bernoulli(theta);
 \end{Code}
+\end{absolutelynopagebreak}
 %
 A \code{beta(1,1)} (i.e., uniform) prior is placed on \code{theta},
 although there is no special behavior for conjugate priors in
@@ -401,22 +286,21 @@ for \code{theta}.
 \subsection{Data format}
 
 Data for running \proglang{Stan} from the command line can be included
-in \proglang{R} dump format.%
-%
-\footnote{A \pkg{JSON} interface for structured data input and output is
-  currently under development.}
-%
-For example, 10 observations for the
-model in Figure~\ref{bernoulli-model.fig} could be encoded as%
+in \proglang{R} dump format.  All of the variables declared in the
+data block of the \proglang{Stan} program must be defined in the data
+file.  For example, 10 observations for the model in
+Figure~\ref{bernoulli-model.fig} could be encoded as%
 %
 \footnote{This data
 file is provided with the \proglang{Stan} distrbution in file
 \nolinkurl{src/models/basic\_estimators/bernoulli.R.stan}.}
 %
+\begin{absolutelynopagebreak}
 \begin{Code}
 N <- 10
 y <- c(0,1,0,0,0,0,0,0,0,1)
 \end{Code}
+\end{absolutelynopagebreak}
 %
 This defines the contents of two variables, an integer \code{N} and a
 10-element integer array \code{y}.  The variable \code{N} is declared
@@ -478,7 +362,9 @@ to the data is just the file name \code{bernoulli.data.R}.
 \end{CodeInput}
 \end{CodeChunk}
 %
-For Windows, the \code{./} before the command should be removed.  
+For Windows, the \code{./} before the command should be removed.  This
+call specifies that sampling should be performed with the model
+instantiated using the data in the specified file.
 
 \subsubsection{Terminal output from sampler}
 
@@ -540,8 +426,23 @@ Iteration: 2000 / 2000 [100%]  (Sampling)
 \end{Code}
 %
 The sampler configuration parameters are echoed, here they are all
-default values other than the data file.  These parameters may be set
-on the command line.  
+default values other than the data file.  
+
+The command-line parameters marked \code{Default} may be explicitly
+set on the command line.  Each value is preceded by the full path to
+it in the hierarchy; for instance, to set the maximum depth for the
+no-U-turn sampler, the command would be the following, where backslash
+indicates a continued line.
+%
+\begin{CodeChunk}
+\begin{CodeInput}
+> ./bernoulli sample  \
+  algorithm=hmc engine=nuts max_depth=5  \
+  data max_depthfile=bernoulli.data.R
+\end{CodeInput}
+\end{CodeChunk}
+%
+
 
 \subsubsection{Help}
 
@@ -603,16 +504,19 @@ with a summary of the configuration parameters for the run.
 \end{Code}
 %
 \proglang{Stan}'s behavior is fully specified by these configuration
-parameters.  By using the same version of \proglang{Stan} and these
-configuration parameters, exactly the same output file can be
-reproduced.  The pseudorandom numbers generated by the sampler are
-fully determined by the seed (here randomly generated based on the
-time of the run, with value \code{847896134}) and the identifier (here
-\code{0}).  The identifier is used to advance the underlying
-pseudorandom number generator a sufficient number of values that
-using multiple chains with the same seed and different identifiers
-will draw from different subsequences of the pseudorandom number
-stream determined by the seed.
+parameters, almost all of which have default values.  The
+\code{sample} configuration
+
+ By using the same version of
+\proglang{Stan} and these configuration parameters, exactly the same
+output file can be reproduced.  The pseudorandom numbers generated by
+the sampler are fully determined by the seed (here randomly generated
+based on the time of the run, with value \code{847896134}) and the
+identifier (here \code{0}).  The identifier is used to advance the
+underlying pseudorandom number generator a sufficient number of values
+that using multiple chains with the same seed and different
+identifiers will draw from different subsequences of the pseudorandom
+number stream determined by the seed.
 
 The output contiues with a CSV header naming the columns of the
 output. For the default NUTS sampler in \proglang{Stan} 2.2.0, these are
@@ -621,10 +525,17 @@ output. For the default NUTS sampler in \proglang{Stan} 2.2.0, these are
 lp__,accept_stat__,stepsize__,treedepth__,n_divergent__,theta
 \end{Code}
 %
-The values for \code{lp\_\_} indicate the log probability (up to an
-additive constant).  The column headed by \code{accept\_stat\_\_}
-provides the Metropolis/slice acceptance statistic for each
-iteration.%
+The values headed by \code{lp\_\_} are the log densities (up to an
+additive constant), \code{accept\_stat\_\_} are the Metropolis
+acceptance proababilities averaged over samples in the slice used by
+the no-U-turn sampler, \code{stepsize\_\_} is the leapfrog
+integrator's step size for simulating the Hamiltonian,
+\code{treedepth\_\_} is the depth of tree explored by the no-U-turn
+sampler, and \code{n\_divergent\_\_} is the number of iterations leading
+to a numerical instability during integration (e.g., numerical
+overflow or a positive-definiteness violation).
+
+ for each iteration.%
 %
 \footnote{Acceptance is the usual notion for a Metropolis sampler such
   as HMC \citep{MetropolisEtAl:1953}.  For NUTS, the acceptance
@@ -988,22 +899,162 @@ floating-point calculations.  Errors between the model's gradient
 calculation and finite differences can indicate a bug in
 \proglang{Stan}'s algorithmic differentiation for a function in the model.
 
+\subsection{Roadmap for the Rest of the Paper}
 
-\section{Models}
+Now that the key functionality of \proglang{Stan} has been
+demonstrated, the remaining sections cover specific aspects of
+\proglang{Stan}'s architecture.  Section~\ref{data-types.section}
+covers variable data type declarations as well as expressions and type
+inference, Section~\ref{programming.section} describes the top-level
+blocks and execution of a \proglang{Stan} program,
+Section~\ref{statements.section} lays out the available statements,
+and Section~\ref{functions.section} the built-in math, matrix, and
+probability function library.  Section~\ref{inference-engines.section}
+lays out MCMC and optimization-based inference.  There are two
+appendices, Appedix~\ref{process.section} outlining the development
+process and Appendix~\ref{libraries.section} detailing the library
+dependencies.
+
+
+\section{Data types}\label{data-types.section}
+
+All expressions in \proglang{Stan} are statically typed, including
+variables.  This means their type is declared at compile time as part
+of the model, and does not change throughout the execution of the
+program.  This is the same behavior as is found in compiled
+programming languages such as \proglang{C(++)}, \proglang{Fortran},
+and \proglang{Java}, but is unlike the behavior of interpreted
+languages such as \proglang{BUGS}, \proglang{R}, and
+\proglang{Python}.  Statically typing the variables (as well as
+declaring them in appropriate blocks based on usage) makes
+\proglang{Stan} programs easier to read and easier to debug by making
+explicit the modeling decisions and expression types.
+
+\subsection{Primitive types}
+
+The primitive types of \proglang{Stan} are \code{real} and \code{int},
+which are used to represent continuous and integer values.  These
+values are represented directly in \proglang{C++} as types
+\code{double} and \code{int}.  Integer expressions can be used
+anywhere a real value is required, but not {\it vice-versa}.  
+
+\subsection{Vector and matrix types}
+
+\proglang{Stan} supports vectors, row vectors, and matrices with the
+usual access operations.  Indexing for vector, matrix, and array types
+starts from one.  
+
+Vectors are declared with their sizes and matrices with their number
+of rows and columns.  Vector, row vector, and matrix elements are
+accessed using bracket notation, as in \code{y[3]} for the third
+element of a vector or row vector and \code{a[2,3]} for the element in
+the third column of the second row of a matrix.  Indexing begins from
+1.  The notation \code{a[2]} accesses the second row of matrix \code{a}.
+
+All vector and matrix types contain real values and may not be
+declared to contain integers.  Collections of integers are represented
+using arrays.
+
+
+
+\subsection{Array types}
+
+An array may have entries of any other type.  For example, arrays of
+integers and reals are allowed, as are arrays of vectors or arrays of
+matrices.  
+
+Higher-dimensional arrays are intrinsically arrays of arrays.  An
+entry in a two-dimensional array \code{y} may be accessed as
+\code{y[1,2]}.  The expression \code{y[1]} by itself denotes the
+one-dimensional array whose values correspond to the first row of
+\code{y}.  Thus \code{y[1][2]} has the same value as \code{y[1,2]}.%
+%
+\footnote{Arrays are stored in row-major order and matrices in
+  column-major order.}
+
+Unlike integers, which may be used where real values are required,
+arrays of integers may not be used where real arrays are required.%
+%
+\footnote{In the language of type theory, \proglang{Stan} arrays are
+  not covariant.  This follows the behavior of both arrays and
+  standard library containers in \proglang{C++}.}
+
+The manual contains a chapter discussing the efficiency tradeoffs and
+motivations for separating arrays and matrices.
+
+\subsection{Constrained variable types}
+
+Variables may be declared with constraints.  The constraints have
+different effects depending on the block in which the variable is
+declared.
+
+Integer and real types may be provided with lower bounds, upper
+bounds, or both.  This includes the types used in arrays, and the real
+types used in vectors and matrices.
+
+Vector types may be constrained to be unit simplexes (all entries
+non-negative and summing to 1), unit length vectors (sum of squares is 1), or
+ordered (entries are in ascending order), positive ordered (entries in
+ascending order, all non-negative), using the types \code{simplex[K]},
+\code{unit_vector[K]}, \code{ordered[K]}, or
+\code{positive_ordered[K]}, where \code{K} is the size of the vector.
+
+Matrices may be constrained to be covariance matrices (symmetric,
+positive definite) or correlation matrices (symmetric, positive
+definite, unit diagonal), using the types \code{cov_matrix[K]} and
+\code{corr_matrix[K]}.
+
+
+\subsection{Expressions}\label{expressions.section}
+
+The syntax of \code{Stan} is defined in terms of expressions and
+statements.  Expressions denote values of a particular type.  
+Statements represent operations such as assignment and sampling as
+well as control structures such as for loops and conditionals.
+
+\proglang{Stan} provides the usual kinds of expressions found in
+programming languages.  This includes variables, literals denoting
+integers, real values or strings, binary and unary operators over
+expressions, and function application.  
+
+\subsubsection{Type inference}
+
+The type of a numeric literal is determined by whether or not it
+contains a period or scientific notation; for example, \code{20} has
+type \code{int} whereas \code{20.0} and \code{2e+1} have type
+\code{real}.
+
+The type of applying an operator or a function to one or more
+expressions is determined by the available signatures for the
+function.  For example, the multiplication operator (\code{*}) has a
+signature that maps two \code{int} arguments to an \code{int} and two
+\code{real} arguments to a \code{real} result.  Another signature for
+the same operator maps a \code{row\_vector} and a \code{vector} to a
+\code{real} result.
+
+\subsubsection{Type promotion}
+
+If necessary, an integer type will be promoted to a \code{real} value.
+For example, multiplying an \code{int} by a \code{real} produces a
+\code{real} result by promoting the \code{int} argument to a
+\code{real}.  
+
+
+
+\section{Top-Level Blocks and Program Execution}\label{programming.section}\label{hierarchical-modeling.section}
 
 In the rest of this paper, we will concentrate on the modeling
 language and how compiled models are executed.  These details are the
 same whether a \proglang{Stan} model is being used by one of the
 built-in samplers or optimizers or being used externally by a
-user-defined sampler or optimizer.
+user-defined sampler or optimizer.   
 
-\subsection{Example: hierarchical model, with inference}\label{hierarchical-modeling.section}
-
-\cite[Section 5.1]{GelmanEtAl:2013} define a hierarchical model of the
-incidence of tumors in rats in control groups across trials; a very
-similiar model is defined for mortality rates in pediatric surgeries
-across hospitals in \citep[Examples, Volume
-1]{LunnEtAl:2000,LunnEtAl:2009}.  
+We begin with an example that will be used throughout the rest of this
+section.  \cite[Section 5.1]{GelmanEtAl:2013} define a hierarchical
+model of the incidence of tumors in rats in control groups across
+trials; a very similiar model is defined for mortality rates in
+pediatric surgeries across hospitals in \citep[Examples, Volume
+1]{LunnEtAl:2000,LunnEtAl:2009}.
 %  
 \begin{figure}
 \begin{Code}
@@ -1101,7 +1152,7 @@ Any constant data can also be defined in the transformed data block.
 The transformed data block starts with a sequence of variable
 declarations and continues with a sequence of statements defining the
 variables.  For example, the following transformed data block declares
-a vector \code{x\_std}, then defines it to be the standardization of \code{x}.
+a vector \code{x\_std}, then defines it to be the standardization of \code{x}:
 %
 \begin{Code}
 transformed data {
@@ -1127,16 +1178,12 @@ the probability of success in group \code{j}.  The prior on each
 \code{theta[j]} is parameterized by a prior mean chance of success
 \code{lambda} and prior count \code{kappa}.  Both \code{theta[j]} and
 \code{lambda} are constrained to fall between zero and one, whereas
-\code{lambda} is constrained to be greater than or equal to 0.1 to
+\code{kappa} is constrained to be greater than or equal to 0.1 to
 match the support of the Pareto hyperprior it receives in the model block.
 
 The parameter block is executed every time the log probability is
 evaluated.  This may be multiple times per iteration of a sampling or
-optimization algorithm.  Furthermore, different samplers and
-optimizers use different instantiations of the log probability
-function depending on the form and order of the derivative information
-they require; see Section~\ref{inference-engines.section} for
-details. 
+optimization algorithm.  
 
 \subsubsection{Implicit change of variables to unconstrained space}
 
@@ -1192,19 +1239,22 @@ parameters block may be used.  In the example, the prior success and
 failure counts \code{alpha} and \code{beta} are defined in terms of
 the prior mean \code{lambda} and total prior count \code{kappa}.
 
-The transformed parameter block is executed after the parameter
-block.  Constraints are validated after all of the statements defining the
+The transformed parameter block is executed after the parameter block.
+Constraints are validated after all of the statements defining the
 transformed parameters have executed.  Failure to validate a
 constraint results in an exception being thrown, which halts the
 execution of the log probability function.  The log probability
-function can be defined to return negative infinity or a special
-not-a-number value. 
+function can be defined to return negative infinity or the special
+not-a-number value, both of which are available through built-in
+functions and may be passed to the \code{increment\_log\_prob}
+function (see below).
 
 If transformed parameters are used on the left-hand side of a sampling
-statement, it is up to the user to add the appropriate log Jacobian
-adjustment to the log probability accumulator.  For instance, a
-lognormal variate could be generated as follows without the built-in
-\code{lognormal} density function  using the normal density as
+statement, it is up to the user to add the appropriate log absolute
+Jacobian determinant adjustment to the log probability accumulator.
+For instance, a lognormal variate could be generated as follows
+without the built-in \code{lognormal} density function using the
+normal density as
 %
 \begin{Code}
 parameters {
@@ -1213,7 +1263,8 @@ parameters {
 transformed parameters {
   real v;
   v <- log(u);
-  increment_log_prob(u);      // log absolute Jacobian adjustment
+  // log absolute Jacobian determinant adjustment
+  increment_log_prob(u);      
 }
 model {
   v ~ normal(0,1);
@@ -1221,10 +1272,18 @@ model {
 \end{Code}
 %
 The transorm is $f(u) = \log u$, the inverse transform is $f^{-1}(v) =
-\exp v$, so the absolute log Jacobian is $|\frac{d}{dv} \exp v| =
-\exp v = u$.  Whenever a transformed parameter is used on the left
-side of a sampling statement, a warning is printed to remind the user
-of the need for a Jacobian adjustment for the change of variables.
+\exp v$, so the absolute log Jacobian determinant is $|\frac{d}{dv}
+\exp v| = \exp v = u$.  Whenever a transformed parameter is used on
+the left side of a sampling statement, a warning is printed to remind
+the user of the need for a Jacobian adjustment for the change of
+variables.
+
+The \code{increment\_log\_prob} statement is used to add a term to the
+total log probability function defined by the model block and the log
+absolute Jacobian determinants of the transforms.  The variable
+\code{lp\_\_}, representing the currently accumulated total log
+density, may not be assigned to directly.
+
 
 Values of transformed parameters are saved in the output along
 with the parameters.  As an alternative, local variables can be used
@@ -1232,16 +1291,16 @@ to define temporary values that do not need to be saved.
 
 \subsection{Model block}
 
-The model block defines the log probability function on the
-constrained parameter space.  The example in
+The purpose of the model block is to define the log probability
+function on the constrained parameter space.  The example in
 Figure~\ref{hier-binom.fig} has a simple model containing four
 sampling statements.  The hyperprior on the prior mean \code{lambda}
 is uniform, and the hyperprior on the prior count \code{kappa} is a
 Pareto distribution with lower-bound of support at 0.1 and shape 1.5,
 leading to a probability of $\kappa > 0.1$ proportional to
 $\kappa^{-5/2}$.  Note that the hierarchical prior on \code{theta} is
-vectorized: each element of \code{theta} is drawn independently from
-a beta distribution with prior success count \code{alpha} and prior
+vectorized: each element of \code{theta} is drawn independently from a
+beta distribution with prior success count \code{alpha} and prior
 failure count \code{beta}.  Both \code{alpha} and \code{beta} are
 transformed parameters, but because they are only used on the
 right-hand side of a sampling statement do not require a Jacobian
@@ -1252,7 +1311,26 @@ success \code{theta[i]}.  In vectorized sampling statements, single
 values may be repeated as many times as necessary.
 
 The model block is executed after the transformed parameters block
-every time the log probability function is evaluated.  
+every time the log probability function is evaluated. 
+
+\subsubsection{Implicit uniform priors}\label{implicit-prior.section}
+
+The default distribution for a variable is uniform over its
+declared (constrained) support.  For instance, a variable declared with a lower
+bound of 0 and an upper bound of 1 implicitly receives a $\mbox{\sf
+  Uniform}(0,1)$ distribution.  These implicit uniform priors are
+improper if the variable has unbounded support.  For instance, the
+uniform distributions over real values with upper and lower bounds,
+simplexes and correlation matrices is proper, but the uniform
+distribution over unconstrained or one-side constrained reals, ordered
+vectors or covariance matrices are not proper.
+
+\proglang{Stan} does not require proper priors, but if the posterior
+is improper, \proglang{Stan} will halt with an error message.%
+%
+\footnote{Improper posteriors are diagnosed automatically when
+  parameters overflow to infinity during simulation.}
+ 
 
 \subsection{Generated quantities block}
 
@@ -1261,7 +1339,7 @@ parameters and data, but do not affect estimation, to be defined
 efficiently.  The generated quantities block is called only once per
 sample, not once per log probability function evaluation.  It may be
 used to calculate predictive inferences as well as to carry out
-forward simulation for predictive posterior checks; see
+forward simulation for posterior predictive checks; see
 \citep{GelmanEtAl:2013} for examples.
 
 The \proglang{BUGS} surgical example explored the ranking of
@@ -1278,9 +1356,8 @@ posterior rank histograms.
 Posterior comparisons can be carried out directly or using rankings.
 For instance, the model in Figure~\ref{hier-binom.fig} sets
 \code{highest[j]} to 1 if hospital \code{j} has the highest estimated
-mortality rate.  Applying a hierarchical model then considering
-posterior inference appropriately adjusts for mulitple comparisons;
-see \citep{GelmanEtAl:2012, Efron:2010} for discussion.
+mortality rate (for a discussion of multiple comparisions and
+hierarchical models, see \citep{GelmanEtAl:2012, Efron:2010}).
 
 As a second illustration, the generated quantities block n
 Figure~\ref{hier-binom.fig} calculates the (posterior) probability
@@ -1301,395 +1378,25 @@ the program exits and an informative error message is printed.  If
 random initialization is specified, the built-in pseudorandom number
 generator is called once per unconstrained variable dimension.  The
 default initialization is to randomly generate values uniformly on
-$[-2,2]$ by default or another interval by specification.  This
-supplies fairly diffuse starting points when transformed back to the
-constrained scale, and thus help with convergence diagnostics as
-discussed in \citep{GelmanEtAl:2013}.  Models with more data or more
-elaborate structure require narrower intervals for initialization to
-ensure the sampler is able to quickly converge to a stationary
-distribution in the high mass region of the posterior.  
+$[-2,2]$; another interval may be specified with \code{init=x} for
+some non-negative floating-point value \code{x}.  This supplies fairly
+diffuse starting points when transformed back to the constrained
+scale, and thus help with convergence diagnostics as discussed in
+\citep{GelmanEtAl:2013}.  Models with more data or more elaborate
+structure require narrower intervals for initialization to ensure the
+sampler is able to quickly converge to a stationary distribution in
+the high mass region of the posterior.
+
+Although \proglang{Stan} is quite effective at converging from diffuse
+random initializations, the user may supply their own initial values
+for sampling, optimization, or diagnosis.  The top-level command-line
+option is \code{init=path}, where \code{path} is a path to a file
+specifying values for all parameters in \proglang{R} dump format.
 
 
 
-\subsection{Variable definition and block execution summary}
 
-A table summarizing the point at which variables are read, written,
-or defined is provided in Figure~\ref{block-actions.fig}. 
-%
-\begin{figure}
-\begin{center}
-\begin{tabular}{l|c|l|l}
-{ Block} & { Statements?} & { Action} & { Evaluated}
-\\\hline\hline
-\code{user initialization} & n/a & transform & chain
-\\[3pt]
-\code{random initialization} & n/a & randomize & chain 
-\\\hline\hline
-\code{data} & no & read & chain  
-\\
-\code{transformed data} & yes & evaluate & chain  
-\\ \hline
-\code{parameters} & no & inv.\ transform, Jacobian & leapfrog  \\
-& & inv.\ transform, write & sample 
-\\[3pt]
-\code{transformed parameters} & yes & evaluate & leapfrog \\
-& & write & sample 
-\\\hline
-\code{model} & yes & evaluate & leapfrog
-\\\hline
-\code{generated quantities} & yes & evaluate & sample \\
-& & write & sample
-\end{tabular}
-\end{center}
-\caption{\it Each \proglang{Stan} program block admits certain actions that are evaluated
-  at specific times during sampling.  For example, the parameter initialization in
-  the \code{data} block requires a read operation once per chain.}
-\label{block-actions.fig}
-\end{figure}
-%
-This table is defined assuming HMC or NUTS samplers, which require a
-log probability and gradient calculation for one or more leapfrog
-steps per iteration; see \citep{HoffmanGelman:2011}.
-%
-\begin{figure}
-\begin{center}
-\begin{tabular}{l|l}
-{ Variable Categorization} & { Declaration Block}
-\\ \hline\hline
-% constants & \code{transformed data}
-% \\ \hline
-unmodeled data & \code{data}, \code{transformed data}
-\\ 
-modeled data & \code{data}, \code{transformed data}
-\\ \hline
-missing data & \code{parameters}, \code{transformed parameters}
-\\
-modeled parameters & \code{parameters}, \code{transformed parameters}
-\\
-unmodeled parameters & \code{data}, \code{transformed data}
-\\[2pt] \hline
-generated quantities & \code{transformed data}, \code{transformed parameters}, 
-\\ 
-& \code{generated quantities}
-\\ \hline\hline
-loop indices & any loop statement
-\\ \hline
-local variables & any statement block
-\\ 
-\end{tabular}
-\end{center}
-\caption{\it Variables of each categorization must be declared in
-  specific blocks.  Data may also be expressed using numeric
-  literals.}\label{variable-kinds.fig}
-\end{figure}
-%
-\citet[p.~366]{GelmanHill:2007} provide a taxonomy of the kinds of
-variables used in Bayesian models.  Figure~\ref{variable-kinds.fig}
-contains Gelman and Hill's taxonomy aligned with the corresponding
-locations of declarations and definitions in \proglang{Stan}.
-Unmodeled data variables includes size constants and regression
-predictors.  Modeled data variables include known outcomes or
-measurements.  A data variable or constant literal is modeled in a
-\proglang{Stan} program if it (or a variable that depends on it)
-occurs on the left-hand side of a sampling statement.  Unmodeled
-parameters are provided as data, and are either known or fixed to some
-value for convenience, a typical use being the parameters of a weakly
-informative prior for a parameter.
-
-A modeled parameter is given a distribution by the model (usually
-dependent on data and correlated with other parameters).  This can be
-done either by placing it (or a variable that depends on it) on the
-left-hand side of a sampling statement or by declaring the variable
-with a constraint (see Section~\ref{implicit-prior.section}).
-
-Any variable that occurs in a (transformed) data block can also be
-provided instead as a constant.  So a user may decide to write \code{y
-~ normal(0,1)} or to declare \code{mu} and \code{sigma} as data, and
-write \code{y ~ normal(mu,sigma)}.  The latter choice allows the
-parameters to be changed without recompiling the model, but requires
-them to be specified as part of the input data.
-
-Missing data is a new variable type included here.  In order to
-perform inference on missing data, it must be declared as a parameter
-and modeled; see \citep{GelmanEtAl:2013} for a discussion of
-statistical models of missing data.  Unlike \proglang{BUGS}, data may
-not contain a mixture of missing (i.e., \code{NA}) values and numeric
-values.  \proglang{Stan} uses the built-in \proglang{C++}
-floating-point (and integer) arithmetic, for which there is no
-equivalent of \code{NA}.  See \citep{Stan:2013} for strategies for
-coding missing data problems in \proglang{Stan}.
-
-Generated quantities include simple transforms of data required for
-printing.  For example, the variable of interest might be a standard
-deviation, resulting from transforming a precision parameter $\tau$ to
-a scale parameter $\sigma = \tau^{-1/2}$.  A non-linearly transformed
-variable will have different effective sample sizes and $\hat{R}$
-statistics than the variable it is derived from, so it is convenient
-to define variables of interest in the generated quantities block to
-calculate these statistics automatically.  As seen in the example in
-Figure~\ref{hier-binom.fig}, generated quantities may also be used for
-event probability estimates.
-
-The generated quantities block may also be used for forward
-simulations, generating values to make predictions or to perform
-posterior predictive checks; see \citep{GelmanEtAl:2013} for more
-information.  The generated quantities block is the only location in
-\proglang{Stan} in which random-number generators may be applied
-explicitly (they are implicit in parameters).
-
-Calculations in the generated quantities block do not impact the
-estimates of the parameters.  In this way, generated quantities can be
-used for predictions with a behavior not unlike that of cut in
-\proglang{BUGS} \citep{LunnEtAl:2012}.  Nevertheless, we recommend
-full Bayesian inference in general, and only use the generated
-quantities block for efficiency and clarity of code.  For example, in
-many models, generating predictions for unseen data or replicating
-data for posterior predictive checks does not affect the estimation of
-the parameters of interest.
-
-The list in Figure~\ref{variable-kinds.fig} is completed with two
-types of local variables, loop indices and traditional local
-variables.  Unlike \proglang{BUGS}, \proglang{Stan} allows local
-variables to be declared and assigned.  For example, it is possible to
-compute the sum of the squares of entries in an array or vector
-\code{y} as follows.%
-%
-\footnote{The built-in squared norm function is the right way to
-  implement sums of squares in \proglang{Stan}.}
-%
-\begin{Code}
-{ 
-  real sum_of_squares;
-  sum_of_squares <- 0;
-  for (n in 1:N)
-    sum_of_squares <- sum_of_squares + y[n] * y[n];
-}  
-\end{Code}
-%
-Local variables may not be declared with constraints, because there is
-no location at which it makes sense to test that they satisfy the
-constraints. 
-
-
-\subsection{Implicit uniform priors}\label{implicit-prior.section}
-
-The default distribution for a variable is uniform over its support.
-For instance, a variable declared with a lower bound of 0 and an upper
-bound of 1 implicitly receives a $\mbox{\sf Uniform}(0,1)$
-distribution.  These implicit uniform priors are improper if the
-variable has unbounded support.  For instance, the uniform
-distributions over real values with upper and lower bounds, simplexes
-and correlation matrices is proper, but the uniform distribution over
-unconstrained or one-side constrained reals, ordered vectors or
-covariance matrices are not proper.
-
-\proglang{Stan} does not require proper priors, but if the posterior
-is improper, \proglang{Stan} will halt with an error message.%
-%
-\footnote{Improper posteriors are diagnosed automatically when
-  parameters overflow to infinity during simulation.}
-
-
-\subsection{The non-centered parameterization for hierarchical models}\label{centering.section}
-
-Consider the following hierarchical logistic regression model fragment.
-%
-\begin{Code}
-data {
-  int<lower=1,upper=K> group[N];  // group of data item n
-}  
-parameters {
-  ...
-  vector mu;             // mean coeff
-  real<lower=0> sigma;   // coeff scale
-  vector[K] beta;        // coeff for group k
-}
-model {
-  beta ~ normal(mu,sigma);
-  for (n in 1:N)
-    y[n] ~ bernoulli_logit(beta[group[n]] * x[n]);
-  ...
-}
-\end{Code}
-%
-With this parameterization, the \code{beta[k]} are centered around
-\code{mu}.  As a result, a change in \code{sigma} is amplified by the
-lower-level parameters and introduces a large change in density across
-the posterior.  Unfortunately the expected density variation of an HMC
-transition is limited%
-%
-\footnote{The limited density variation is ultimately a consequence of
-  a constant metric.  An additional benefit of RHMC are transitions
-  that can cover much larger variations in density, making it uniquely
-  suited to these models; see \citep{Neal:2011}.}
-%
-and many transitions are required to explore the full posterior.  The
-resulting sampler devolves into a random walk with high
-autocorrelations.  \cite{BetancourtGirolami:2013} provide a detailed
-analysis of the benefits of centered vs.\ non-centered
-parameterizations of hierarchical models in Euclidean and Riemannian
-HMC, with the conclusion that non-centered are best when data are
-sparse and centered when the data strongly identifies coefficients.
-
-The following reparameterization employs a non-centered
-parameterization for comparison.
-%
-\begin{Code}
-parameters {
-  ...
-  vector[K] beta_raw;  // replaces beta as parameter  
-}
-transformed parameters {
-  vector[K] beta;      // beta now a transformed parameter
-  beta <- mu + sigma * beta_raw;
-}
-model {
-  beta_raw ~ normal(0,1);  // beta now sampled from unit normal
-  ...
-}
-\end{Code}
-%
-This reparameterization removes the particular correlations amongst the
-hierarchical variables that would otherwise limit the effectiveness
-of the samplers.  We recommend starting with the more natural centered
-parameterization and moving to the non-centered parameterization if
-sampling of the coefficients does not mix well.%
-%
-\footnote{As the saying goes in computer science, it is easier to
-  optimize a correct program than debug an optimized program.}
-
-\section{Data types}
-
-All expressions in \proglang{Stan} are statically typed, including
-variables.  This means their type is declared at compile time as part
-of the model, and does not change throughout the execution of the
-program.  This is the same behavior as is found in compiled
-programming languages such as \proglang{C(++)}, \proglang{Fortran},
-and \proglang{Java}, but is unlike the behavior of interpreted
-languages such as \proglang{BUGS}, \proglang{R}, and
-\proglang{Python}.  Statically typing the variables (as well as
-declaring them in appropriate blocks based on usage) makes
-\proglang{Stan} programs easier to read and easier to debug by making
-explicit the modeling decisions and expression types.
-
-\subsection{Primitive types}
-
-The primitive types of \proglang{Stan} are \code{real} and \code{int},
-which are used to represent continuous and integer values.  These
-values are represented directly in \proglang{C++} as types
-\code{double} and \code{int}.  Integer expressions can be used
-anywhere a real value is required, but not {\it vice-versa}.  
-
-\subsection{Vector and matrix types}
-
-\proglang{Stan} supports vectors, row vectors, and matrices with the
-usual access operations.  Indexing for vector, matrix, and array types
-starts from one.  
-
-Vectors are declared with their sizes and matrices with their number
-of rows and columns.  Vector, row vector, and matrix elements are
-accessed using bracket notation, as in \code{y[3]} for the third
-element of a vector or row vector and \code{a[2,3]} for the element in
-the third column of the second row of a matrix.  Indexing begins from
-1.  
-
-The notation \code{a[2]} accesses the second row of matrix \code{a}.
-Rows, columns and subblocks of matrices can be accessed using
-\code{row}, \code{col}, and \code{block} functions.  Slices of arrays
-can be accessed using the \code{head}, \code{tail}, and \code{segment}
-functions.  There are also special functions for creating a diagonal
-matrix from a vector and accessing the diagonal of a vector.
-
-All vector and matrix types contain real values and may not be
-declared to contain integers.  Collections of integers are represented
-using arrays.
-
-\subsection{Array types}
-
-An array may have entries of any other type.  For example, arrays of
-integers and reals are allowed, as are arrays of vectors or arrays of
-matrices.  
-
-Higher-dimensional arrays are intrinsically arrays of arrays.  An
-entry in a two-dimensional array \code{y} may be accessed as
-\code{y[1,2]}.  The expression \code{y[1]} by itself denotes the
-one-dimensional array whose values correspond to the first row of
-\code{y}.  Thus \code{y[1][2]} has the same value as \code{y[1,2]}.%
-%
-\footnote{Arrays are stored in row-major order and matrices in
-  column-major order.}
-
-Unlike integers, which may be used where real values are required,
-arrays of integers may not be used where real arrays are required.%
-%
-\footnote{In the language of type theory, \proglang{Stan} arrays are
-  not covariant.  This follows the behavior of both arrays and
-  standard library containers in \proglang{C++}.}
-
-The manual contains a chapter discussing the efficiency tradeoffs and
-motivations for separating arrays and matrices.
-
-\subsection{Constrained variable types}
-
-Variables may be declared with constraints.  The constraints have
-different effects depending on the block in which the variable is
-declared.
-
-Integer and real types may be provided with lower bounds, upper
-bounds, or both.  This includes the types used in arrays, and the real
-types used in vectors and matrices.
-
-Vector types may be constrained to be unit simplexes (all entries
-non-negative and summing to 1), unit length vectors (sum of squares is 1), or
-ordered (entries are in ascending order), positive ordered (entries in
-ascending order, all non-negative), using the types \code{simplex[K]},
-\code{unit_vector[K]}, \code{ordered[K]}, or
-\code{positive_ordered[K]}, where \code{K} is the size of the vector.
-
-Matrices may be constrained to be covariance matrices (symmetric,
-positive definite) or correlation matrices (symmetric, positive
-definite, unit diagonal), using the types \code{cov_matrix[K]} and
-\code{corr_matrix[K]}.
-
-\section{Expressions and type inference}
-
-The syntax of \code{Stan} is defined in terms of expressions and
-statements.  Expressions denote values of a particular type.  
-Statements represent operations such as assignment and sampling as
-well as control structures such as for loops and conditionals.
-
-\subsection{Expressions}
-
-\proglang{Stan} provides the usual kinds of expressions found in
-programming languages.  This includes variables, literals denoting
-integers, real values or strings, binary and unary operators over
-expressions, and function application.  
-
-\subsubsection{Type inference}
-
-The type of each variable is declared statically and cannot change.  
-
-The type of a numeric literal is determined by whether or not it
-contains a period or scientific notation; for example, \code{20} has
-type \code{int} whereas \code{20.0} and \code{2e+1} have type
-\code{real}.
-
-The type of applying an operator or a function to one or more
-expressions is determined by the available signatures for the
-function.  For example, the multiplication operator (\code{*}) has a
-signature that maps two \code{int} arguments to an \code{int} and two
-\code{real} arguments to a \code{real} result.  Another signature for
-the same operator maps a \code{row\_vector} and a \code{vector} to a
-\code{real} result.
-
-\subsubsection{Type promotion}
-
-If necessary, an integer type will be promoted to a \code{real} value.
-For example, multiplying an \code{int} by a \code{real} produces a
-\code{real} result by promoting the \code{int} argument to a
-\code{real}.  
-
-\section{Statements}
+\section{Statements}\label{statements.section}
 
 \subsection{Assignment and sampling}
 
@@ -1737,9 +1444,10 @@ before being used.
 
 \subsubsection{Direct definition of probability functions}
 
-Because computation is only up to a proportion, this sampling
-statement in turn has the same effect as the direct implementation in
-terms of basic arithmetic,
+Because computation is only up to a proportionality constant (an
+additive constant on the log scale), this sampling statement in turn
+has the same effect as the direct implementation in terms of basic
+arithmetic,
 %
 \begin{Code}
 increment_log_prob(-0.5 * beta * beta);
@@ -1822,14 +1530,42 @@ These statements may be used for debugging purposes to report on
 intermediate states of variables or to indicate how far execution has
 proceeded before an error.
 
-\section{Function and distribution library}
+As an example, suppose a user's program raises an error at run time
+because a covariance matrix defined in the transformed parameters
+block fails its symmetry constraint.  
+%
+\begin{Code}
+transformed parameters {
+  cov_matrix[K] Sigma;
+  for (m in 1:M)
+    for (n in m:M) 
+      Sigma[m,n] <- Omega[m,n] * sigma[m] * sigma[n];
+
+  print("Sigma=", Sigma);
+}
+\end{Code}
+%
+The print statement added at the last line will dump out the values in
+the matrix. 
+
+
+\section{Function and distribution library}\label{functions.section}
 
 In order to support the algorithmic differentiation required to
 calculate gradients, Hessians, and higher-order derivatives in
-\proglang{Stan}, we require \proglang{C++} functions that are 
+\proglang{Stan}, we require \proglang{C++} functions that are
 templated separately on all of their arguments.  In order for these
 functions to be efficient in computing both values and derivatives,
-they need to be vectorized so that shared computations can be reused.
+they need to operate directly on vectors of arguments so that shared
+computations can be reused.  For example, if \code{y} is a vector and
+\code{sigma} is a scalar, the logarithm of \code{sigma} need only be
+evaluated once in order to compute the normal density for every member
+of \code{y} in
+%
+\begin{Code}
+y ~ normal(mu,sigma);
+\end{Code}
+
 
 \subsection{Basic operators}
 
@@ -1865,13 +1601,11 @@ efficient and arithmetically stable execution.
 
 \subsection{Matrix and linear algebra functions}
 
-Following the usual convention in mathematics, matrix and array
-indexing uses the usual square brackets (\code{[ ]}) operator, and
-begins indexing from 1.  For example, if \code{Sigma} is a matrix,
-then \code{Sigma[m,n]} is the entry at row \code{m} and column
-\code{n}.  \proglang{Stan} also allows slices of data structures to be
-returned, so that \code{Sigma[m]} is row \code{m} of the matrix
-\code{Sigma}.  
+Rows, columns and subblocks of matrices can be accessed using
+\code{row}, \code{col}, and \code{block} functions.  Slices of arrays
+can be accessed using the \code{head}, \code{tail}, and \code{segment}
+functions.  There are also special functions for creating a diagonal
+matrix from a vector and accessing the diagonal of a vector.
 
 Various reductions are provided for arrays and matrices, such as sums,
 means, standard deviations, and norms.  Replications are also available
@@ -1885,22 +1619,24 @@ vector returns a matrix, whereas multiplying a row vector by a
 (column) vector returns a real.  A postfix apostrophe (\code{'}) is
 used for matrix and vector transposition.  For example, if \code{y}
 and \code{mu} are vectors and \code{Sigma} is a square matrix, all of
-the same dimensionality, then \code{y - mu} is a vector, \code{(y -
-  mu)'} is a row vector, \code{(y - mu)' * Sigma} is a row vector, and
-\code{(y - mu)' * Sigma * (y - mu)} will be a real value.  Matrix
-division is provided, which is much more arithmetically stable than
-inversion, e.g., \code{(y - mu)' / Sigma} computes the same function
-as \code{(y - mu)' * inverse(Sigma)}.  \proglang{Stan} also supports
-elementwise multiplication (\code{.*}) and division (\code{./}).
+the same dimensionality, then \code{y~-~mu} is a vector,
+\code{(y~-~mu)'} is a row vector, \code{(y~-~mu)'~*~Sigma} is a row
+vector, and \code{(y~-~mu)'~*~Sigma~*~(y~-~mu)} will be a real value.
+Matrix division is provided, which is much more arithmetically stable
+than inversion, e.g., \code{(y~-~mu)'~/~Sigma} computes the same
+function as \code{(y~-~mu)'~*~inverse(Sigma)}.  \proglang{Stan} also
+supports elementwise multiplication (\code{.*}) and division
+(\code{./}).
 
 Linear algebra functions are provided for trace, left and right
 division, Cholesky factorization, determinants and log determinants,
 inverses, eigenvalues and eigenvectors, and singular value
 decomposition.  All of these operations may be applied to matrices of
 parameters or constants.  Various functions are specialized for speed,
-such as quadratic products, diagonal specializations, multiply by self
-transposed, e.g., the previous example could be written as
-\code{quad\_form(Sigma, y - mu)}.
+such as quadratic products, diagonal specializations, and multiply by
+self transposed; e.g., the previous example
+\code{(y~-~mu)'~*~Sigma~*~(y~-~mu)} could be coded as
+as \code{quad\_form(Sigma,~y~-~mu)}.
 
 The full set of matrix and linear-algebra functions is listed in
 Figure~\ref{matrix-functions.fig}; operators, which also apply to
@@ -1919,13 +1655,16 @@ underflow.  They are all named with the suffix \code{\_log}, e.g.,
 function.
 
 All probability functions check that their arguments are within the
-appropriate constrained support and may be configured to throw
-exceptions or return $-\infty$ or a special not-a-number value
-(\code{NaN}) for out-of-domain arguments (the behavior of positive and
-negative infinity and not-a-number values are built into
-floating-point arithmetic).  For example,
-\code{normal\_log(y,} \code{mu,} \code{sigma)} requires the scale parameter
-\code{sigma} to be non-negative.
+appropriate constrained support and are configured to throw exceptions
+and print error messages for out-of-domain arguments (the behavior of
+positive and negative infinity and not-a-number values are built into
+floating-point arithmetic).  For example, \code{normal\_log(y,}
+\code{mu,} \code{sigma)} requires the scale parameter \code{sigma} to
+be non-negative.  Exceptions that are raised by functions will be
+caught by the sampler, optimizer or diagnostic, and their warning
+messages will be printed for the user.  Log density evaluations in
+which exceptions are raised are treated as if they had evaluated to
+negative infinity, and are thus rejected by the sampler or optimizer.
 
 The list of probability functions is provided in
 Figure~\ref{prob-functions.fig}, 
@@ -1949,7 +1688,7 @@ Constant terms are dropped from probability function calculations at
 the time the model is compiled, so there is no run-time overhead to
 decide which expressions denote constants.%
 %
-\footnote{Both vectorization and dropping constant terms are
+\footnote{Both vector arguments and dropping constant terms are
   implemented in \proglang{C++} through template metaprograms that
   infer traits of template arguments to the probability functions.
   Whether to drop constants is configurable through a boolean template
@@ -1965,36 +1704,29 @@ constant as defined above.
 Constant terms are {\it not} dropped in explicit function evaluations,
 such as \code{normal\_log(y,0,sigma)}.
 
-\subsubsection{Vectorization}
+\subsubsection{Vector arguments and shared computations}
 
-All of the univariate%
-%
-\footnote{We are in the process of vectorizing the multivariate
-  probability functions, but they are not all available in
-  \proglang{Stan} 2.0.  We are also in the process of vectorizing
-  all of the special functions.}
-%
-probability functions in \proglang{Stan} are vectorized so that they
-accept arrays or vectors of arguments.  For example, although the
-basic signature of the probability function
+All of the univariate probability functions in \proglang{Stan} are
+implemented so that they accept arrays or vectors of arguments.  For
+example, although the basic signature of the probability function
 \code{normal\_log(y,mu,sigma)} involves real \code{y}, \code{mu} and
 \code{sigma}, it supports calls in which any any or all of \code{y},
 \code{mu} and \code{sigma} contain more than one element. A typical
-use case would be for linear regression, such as \code{y ~ normal(X
-  * beta,sigma)}, where \code{y} is a vector of observed data,
-\code{X} is a predictor matrix, \code{beta} is a coefficient vector,
-and \code{sigma} is a real value for the noise scale.
+use case would be for linear regression, such as \code{y ~ normal(X *
+  beta,sigma)}, where \code{y} is a vector of observed data, \code{X}
+is a predictor matrix, \code{beta} is a coefficient vector, and
+\code{sigma} is a real value for the noise scale.
 
-The advantage of using vectorization is twofold.  First, the models
-are more concise and closer to mathematical notation.  Second, the
-vectorized versions are much faster.  They reduce the number of times
-expensive operations need to be evaluated and also reduce the number
-of virtual function calls required in the compiled \proglang{C++}
-executable for calculating gradients and higher-order derivatives.
-In the example above, \code{y ~ normal(X *
-  beta,sigma)}, the logarithm of \code{sigma} need only be computed
-once; if \code{y} is an $N$-vector, it also reduces the number of
-virtual function calls from $N$ to 1.
+The advantage of using vectors is twofold.  First, the models are more
+concise and closer to mathematical notation.  Second, the vectorized
+versions are much faster.  They reduce the number of times expensive
+operations need to be evaluated and also reduce the number of virtual
+function calls required in the compiled \proglang{C++} executable for
+calculating gradients and higher-order derivatives.  For example if
+\code{sigma} is a parameter, then in evaluating {y ~
+  normal(X~*~beta,~sigma)}, the logarithm of \code{sigma} need only be
+computed once; if either \code{y} or \code{beta} is an $N$-vector, it
+also reduces the number of virtual function calls from $N$ to 1.
 
 \section{Built-in inference engines}\label{inference-engines.section}
 
@@ -2010,7 +1742,7 @@ information supplied by a model.
 
 The MCMC samplers provided include Euclidean manifold Hamiltonian
 Monte Carlo (EHMC, or just HMC) \citep{DuaneEtAl:1987, Neal:1994,
-  Neal:2011} and the No-U-Turn sampler (NUTS)
+  Neal:2011} and the no-U-turn sampler (NUTS)
 \citep{HoffmanGelman:2011}.  Both the basic and NUTS versions of HMC
 allow estimation or specification of unit, diagonal, or full mass
 matrices.  NUTS, the default sampler for \proglang{Stan},
@@ -2019,42 +1751,6 @@ need for user-specified tuning parameters.  Both algorithms take
 advantage of gradient information in the log probability function to
 generate coherent motion through the posterior that dramatically
 reduces the autocorrelation of the resulting transitions.
-
-\proglang{Stan} will soon have an implementation of Riemannian
-manifold Hamiltonian Monte Carlo (RHMC)
-\citep{GirolamiCalderhead:2011}, using the SoftAbs metric to robustly
-incorporate posterior curvature into the Hamiltonian simulation
-\cite{Betancourt:2012}.  \proglang{Stan}'s MCMC framework also makes
-it straightforward to incorporate other metrics.  This implementation
-will also generalize NUTS to Riemannian manifolds
-\citep{Betancourt:2013}.  Both support adapting step sizes during
-warmup.  RHMC with SoftAbs uses first, second, and third order
-derivatives to adapt to the local curvature of the posterior.
-
-\subsubsection{Metropolis-Hastings}
-
-Random-walk Metropolis-Hastings samplers with multivariate normal
-proposals have been prototyped, but not yet integrated into the
-released versions of \proglang{Stan}.  The primary purpose of
-implementing Metropolis-Hastings is to provide baselines against which
-to measure more efficient approaches to sampling.  The covariance
-matrix used can be adapted during warmup, assuming either equal
-diagonal covariance, diagonal covariance, or a full covariance matrix.
-Metropolis-Hastings does not require any derivatives of the log
-probability function, but the lack of gradient information induces
-random walk behavior, leading to slow mixing.
-
-
-\subsubsection{Ensemble samplers}
-
-Two flavors of ensemble samplers are also in the works: an affine invariant
-ensemble sampler \citep{GoodmanWeare:2010} and a differential
-evolution sampler \citep{TerBraak:2006}.  Ensemble samplers do not
-require derivative information, but typically require at least as many
-chains to be run as the number of dimensions in order to have full
-rank search of the posterior.  They also require slightly different
-management of output due to a single sampler instance producing
-multiple correlated chains of draws.
 
 \subsection{Optimizers}
 
@@ -2087,141 +1783,32 @@ Additionally, \proglang{Stan} implements a crude version of Nesterov's
 accelerated gradient optimizer \cite{Nesterov:1983}, which combines
 gradient updates with a momentum-like update to hasten convergence.
 
-\section{Random number generation}\label{rng.section}
+% \section{Random number generation}\label{rng.section}
 
-Random number generation for \proglang{Stan} is done on a per-chain
-basis; ensemble samplers form a single joint chain over the ensemble.  By
-specifying the chain being used, the random number generator can be
-skipped ahead sufficiently to avoid replication of subsequences of
-random numbers across chains.
+% Random number generation for \proglang{Stan} is done on a per-chain
+% basis; ensemble samplers form a single joint chain over the ensemble.  By
+% specifying the chain being used, the random number generator can be
+% skipped ahead sufficiently to avoid replication of subsequences of
+% random numbers across chains.
 
-The generated model code and underlying \proglang{C++} algorithms
-provide template parameters for a class implementing the \pkg{Boost}
-random number generator concept.  
+% The generated model code and underlying \proglang{C++} algorithms
+% provide template parameters for a class implementing the \pkg{Boost}
+% random number generator concept.  
 
-By default, \proglang{Stan} uses linear congruential generators
-\citep{LEcuyer:1988}.  This generator supports efficient skip-ahead.
+% By default, \proglang{Stan} uses linear congruential generators
+% \citep{LEcuyer:1988}.  This generator supports efficient skip-ahead.
 
-\subsection{Replicability}
+% \subsection{Replicability}
 
-The \proglang{Stan} interfaces all allow random-number generator seeds
-to be specified explicitly.  Execution uses a single base random
-number generator instance.  Therefore, by specifying a seed,
-\proglang{Stan}'s behavior is deterministic.  This is very useful for
-debugging purposes.  Seeds can be generated randomly based on
-properties of the system time, but when they are, the seed used is
-printed as part of the output to allow it to be fully replicated.
-
-
-\section{Library dependencies}
-
-\proglang{Stan}'s modeling language is only dependent on two external
-libraries.  
-
-\subsection{Boost} 
-
-\proglang{Stan} depends on several of the \pkg{Boost} \proglang{C++}
-libraries \citep{Boost:2011}.  \proglang{Stan} makes extensive use of
-\pkg{Boost}'s template metaprogramming facilities including the
-\pkg{Enable if} package, the \pkg{Type Traits} library, and the
-\pkg{Lexical Cast} library.  The \proglang{Stan} language is parsed
-using \pkg{Boost}'s \pkg{Spirit} parser, which itself depends on
-the binding libraries \pkg{Phoenix}, \pkg{Bind}, and \pkg{Lambda},
-the variant type library \pkg{Variant}, and the container library
-\pkg{Fusion}.  Exceptions are largely handled and configured through
-the error checking facilities in the \pkg{Math} and
-\pkg{Exception} packages.  Output formatting and ad-hoc input parsing
-for various formats is facilitated with the \pkg{Format} library.
-\proglang{Stan} relies heavily on the special functions defined in the
-\pkg{Math} subpackages \pkg{Special Functions} and \pkg{Statistical
-  Distributions}.  Random number generation is carried out using the
-\pkg{Random} package.  The posterior analysis framework and some
-built-in functions depend on the \pkg{Accumulators} package.
-
-\subsection{Eigen}
-
-\proglang{Stan}'s handling of matrices and linear algebra is
-implemented through the \pkg{Eigen} \proglang{C++} template library
-\citep{Eigen:2012}.  Eigen uses template metaprogramming to achieve
-state-of-the-art performance for matrix and linear algebra operations
-with a great deal of flexiblity with respect to input types.
-Unfortunately, many of the expression templates that Eigen uses for
-efficient static anaysis and lazy evaluation are short-circuited
-because of \proglang{Stan}'s need to have mixed type operations (i.e.,
-multiplying a constant predictor matrix of double values by a
-parameter vector of algorithmic differentiation values).  To make up for
-this in some important cases, \proglang{Stan} has provided compound
-functions such as the quadratic form, which allow speedups of both the
-matrix operations and their derivatives compared to a direct
-implementation using \proglang{Stan}'s built-in operators.
+% The \proglang{Stan} interfaces all allow random-number generator seeds
+% to be specified explicitly.  Execution uses a single base random
+% number generator instance.  Therefore, by specifying a seed,
+% \proglang{Stan}'s behavior is deterministic.  This is very useful for
+% debugging purposes.  Seeds can be generated randomly based on
+% properties of the system time, but when they are, the seed used is
+% printed as part of the output to allow it to be fully replicated.
 
 
-\section{Developer process}
-
-\subsection{Version control and source repository}
-
-\proglang{Stan}'s source code is hosted on GitHub and managed using
-the \pkg{Git} version control system \citep{Chacon:2009}.  To manage
-the workflow with so many developers working at any given time, the
-project follows the GitFlow process \citep{Driessen:2010}.  All
-developer submissions are managed through pull requests and we have
-gratefully received patches from numerous sources outside the core
-development team.
-
-
-\subsection{Continuous integration}
-
-\proglang{Stan} uses continuous integration, meaning that the entire
-program and set of tests are run automatically as code is pushed to
-the \pkg{Git} repository.  Each pull request is tested for
-compatibility with the development branch, and the development branch
-itself is tested for stability.  \proglang{Stan} uses Jenkins
-\citep{Smart:2011}, an open-source continuous integration server.
-
-\subsection{Testing framework}
-
-\proglang{Stan} includes extensive unit tests for low-level \proglang{C++} code.
-Unit tests are implemented using the \pkg{googletest} framework
-\citep{GoogleTest:2011}.  The probability functions and command-line
-invocations are complex enough that programs are used to automatically
-generate test code for \pkg{googletest}.
-
-These unit tests evaluate every function for both appropriate values
-and appropriate derivatives.  This requires an extensive meta-testing
-framework for the probability distributions due to their high degree
-of configurability as to argument types.  The testing portion of the
-makefile also runs tests of all of the built-in models, including
-almost all of the \proglang{BUGS} sample models.  Models are tested
-for both convergence and posterior mean estimation to within MCMC
-standard error.
-
-
-\subsection{Builds}
-
-The build process for \proglang{Stan} is highly automated through a
-cross-platform series of \code{make} files.  The top-level makefile
-builds the \proglang{Stan}-to-\proglang{C++} translator command
-\code{bin/stanc} and posterior analysis command \code{bin/print}.  It
-also builds the library archive \code{bin/libstan.a}.  Great care was
-taken to avoid complicated platform-dependent configuration
-requirements that place a high burden on user system knowledge for
-installation.  All that is needed is a relatively recent
-\proglang{C++} compiler and version of \code{make}.
-
-As exemplified in the introduction, the makefile is automated enough
-to build an executable form of a \proglang{Stan} model in a single
-command.  All libraries and other executables will be built as a side
-effect.  
-
-The top-level makefile also supplies targets to build all of the
-documentation \proglang{C++} API documentation is generated using the
-\pkg{doxygen} package \citep{Doxygen:2011}.  The \proglang{Stan}
-manual \citep{Stan:2013} is typeset using the \LaTeX\ package
-\citep{MittelbachEtAl:2004}.
-
-The makefile also has targets for all of the unit and functional
-testing, for building the source-level distribution, and for cleaning
-any temporary files that it creates.
 
 \section*{Acknowledgments}
 
@@ -2246,15 +1833,15 @@ through a grant from the National Institutes of Health
 (1G20RR030893-01).  \proglang{Stan} is currently supported in part by a grant
 from the National Science Foundation (CNS-1205516).
 
-Finally, we would like to thank all those who contributed
-documentation corrections and code patches, Jeffrey Arnold, David
-R. Blair, Eric C. Brown, Eric N. Brown, Devin Caughey, Wayne Folta,
-Andrew Hunter, Marco Inacio, Louis Luangkesorn, Jeffrey Oldham, Mike
-Ross, Terrance Savitsky, Yajuan Si, Dan Stowell, Zhenming Su, and
-Dougal Sutherland.
+We would like to think those who have contributed code for new
+features, Jeffrey Arnold, Yuanjun Gao, and Marco Inacio, as well as
+those who contributed documentation corrections and code patches,
+Jeffrey Arnold, David R. Blair, Eric C. Brown, Eric N. Brown, Devin
+Caughey, Wayne Folta, Andrew Hunter, Marco Inacio, Louis Luangkesorn,
+Jeffrey Oldham, Mike Ross, Terrance Savitsky, Yajuan Si, Dan Stowell,
+Zhenming Su, and Dougal Sutherland.
 
-And a special thanks to those who have contributed code for new
-features, Jeffrey Arnold, Yuanjun Gao, and Marco Inacio. 
+Finally, we would like to thank two anonymous referees.
 
 \begin{figure}
 \begin{center}
@@ -2633,16 +2220,130 @@ lower-triangular by transpose \\
 \end{figure}
 
 
+\appendix
+
+\section{Developer process}\label{process.section}
+
+\subsection{Version control and source repository}
+
+\proglang{Stan}'s source code is hosted on GitHub and managed using
+the \pkg{Git} version control system \citep{Chacon:2009}.  To manage
+the workflow with so many developers working at any given time, the
+project follows the GitFlow process \citep{Driessen:2010}.  All
+developer submissions are managed through pull requests and we have
+gratefully received patches from numerous sources outside the core
+development team.
+
+
+\subsection{Continuous integration}
+
+\proglang{Stan} uses continuous integration, meaning that the entire
+program and set of tests are run automatically as code is pushed to
+the \pkg{Git} repository.  Each pull request is tested for
+compatibility with the development branch, and the development branch
+itself is tested for stability.  \proglang{Stan} uses Jenkins
+\citep{Smart:2011}, an open-source continuous integration server.
+
+\subsection{Testing framework}
+
+\proglang{Stan} includes extensive unit tests for low-level \proglang{C++} code.
+Unit tests are implemented using the \pkg{googletest} framework
+\citep{GoogleTest:2011}.  The probability functions and command-line
+invocations are complex enough that programs are used to automatically
+generate test code for \pkg{googletest}.
+
+These unit tests evaluate every function for both appropriate values
+and appropriate derivatives.  This requires an extensive meta-testing
+framework for the probability distributions due to their high degree
+of configurability as to argument types.  The testing portion of the
+makefile also runs tests of all of the built-in models, including
+almost all of the \proglang{BUGS} sample models.  Models are tested
+for both convergence and posterior mean estimation to within MCMC
+standard error.
+
+
+\subsection{Builds}
+
+The build process for \proglang{Stan} is highly automated through a
+cross-platform series of \code{make} files.  The top-level makefile
+builds the \proglang{Stan}-to-\proglang{C++} translator command
+\code{bin/stanc} and posterior analysis command \code{bin/print}.  It
+also builds the library archive \code{bin/libstan.a}.  Great care was
+taken to avoid complicated platform-dependent configuration
+requirements that place a high burden on user system knowledge for
+installation.  All that is needed is a relatively recent
+\proglang{C++} compiler and version of \code{make}.
+
+As exemplified in the introduction, the makefile is automated enough
+to build an executable form of a \proglang{Stan} model in a single
+command.  All libraries and other executables will be built as a side
+effect.  
+
+The top-level makefile also supplies targets to build all of the
+documentation \proglang{C++} API documentation is generated using the
+\pkg{doxygen} package \citep{Doxygen:2011}.  The \proglang{Stan}
+manual \citep{Stan:2013} is typeset using the \LaTeX\ package
+\citep{MittelbachEtAl:2004}.
+
+The makefile also has targets for all of the unit and functional
+testing, for building the source-level distribution, and for cleaning
+any temporary files that it creates.
+
+\section{Library dependencies}\label{libraries.section}
+
+\proglang{Stan}'s modeling language is only dependent on two external
+libraries.  
+
+\subsection{Boost} 
+
+\proglang{Stan} depends on several of the \pkg{Boost} \proglang{C++}
+libraries \citep{Boost:2011}.  \proglang{Stan} makes extensive use of
+\pkg{Boost}'s template metaprogramming facilities including the
+\pkg{Enable if} package, the \pkg{Type Traits} library, and the
+\pkg{Lexical Cast} library.  The \proglang{Stan} language is parsed
+using \pkg{Boost}'s \pkg{Spirit} parser, which itself depends on
+the binding libraries \pkg{Phoenix}, \pkg{Bind}, and \pkg{Lambda},
+the variant type library \pkg{Variant}, and the container library
+\pkg{Fusion}.  Exceptions are largely handled and configured through
+the error checking facilities in the \pkg{Math} and
+\pkg{Exception} packages.  Output formatting and ad-hoc input parsing
+for various formats is facilitated with the \pkg{Format} library.
+\proglang{Stan} relies heavily on the special functions defined in the
+\pkg{Math} subpackages \pkg{Special Functions} and \pkg{Statistical
+  Distributions}.  Random number generation is carried out using the
+\pkg{Random} package.  The posterior analysis framework and some
+built-in functions depend on the \pkg{Accumulators} package.
+
+\subsection{Eigen}
+
+\proglang{Stan}'s handling of matrices and linear algebra is
+implemented through the \pkg{Eigen} \proglang{C++} template library
+\citep{Eigen:2012}.  Eigen uses template metaprogramming to achieve
+state-of-the-art performance for matrix and linear algebra operations
+with a great deal of flexiblity with respect to input types.
+Unfortunately, many of the expression templates that Eigen uses for
+efficient static anaysis and lazy evaluation are short-circuited
+because of \proglang{Stan}'s need to have mixed type operations (i.e.,
+multiplying a constant predictor matrix of double values by a
+parameter vector of algorithmic differentiation values).  To make up for
+this in some important cases, \proglang{Stan} has provided compound
+functions such as the quadratic form, which allow speedups of both the
+matrix operations and their derivatives compared to a direct
+implementation using \proglang{Stan}'s built-in operators.
+
+
+
+
+
+
+
+
+
 % \nocite{WainwrightJordan:2008}
 \nocite{R:2013}
 \clearpage
 % implicit: \bibliographystyle{jss}
 \bibliography{stan-paper}
-
-
-
-
-
 
 
 

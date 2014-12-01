@@ -1,0 +1,411 @@
+
+REVIEWER 1
+===========================================================
+
+> The abstract should refer to Broyden-Fletcher-Goldfarb-Shanno
+> algorithm as BFGS.
+
+We were specifically instructed by the editors to not use acronyms in
+the abstract. We introduce the acronym in the usual way with parens at
+its first usage and thereafter call it BFGS, as is common when
+discussing optimization.
+
+> The example problem in section 2.1 should not be across page breaks.
+
+Editors:  should we never break code?   We can do that, but the
+\begin{Code} style didn't do it, so we just went with the stylesheet
+provided by the journal.
+
+> In Section 1 (RHMC) should be (RMHMC)
+
+I changed it to "RMHMC" throughout.
+
+> Section 2 is called Overview but would more accurately be described
+> as an Example of the system
+
+Renamed to "Core Functionality" following Reviewer 2's suggested
+renaming, which conflicted with also calling it "Example".
+
+> Section 2 involves sampling an example model, diagnosing the
+> sampler, and then running an optimizer over the program. This
+> introduction of the optimizer seems like it should be introduced
+> before diagnosing the sampler.
+
+It's not clear what the desired change is.  The section on diagnostic
+mode is after the one on optimization.  If the reviewer is talking
+about the convergence diagnostics, that is sampler specific.
+
+> Section 3 is called Models but is largely about Modeling Language. A
+> more informative section title would help here.
+
+Renamed to "Programming Language".
+
+> Unsure why the same model can't be used in Section 2 and Section 3
+
+To start, we wanted to provide a simple example with fewer parameters
+and thus less output before presenting one that involved more of the
+language.
+
+> Section 9 on Random Number Generation feels unnecessary as Stan does
+> not make use of anything novel here.
+
+Removed all of section 9.
+
+
+REVIEWER 2
+===============================================================
+
+> abstract:  the BFGS authors’ names are not rendering correctly
+
+It seemed OK, but just to be sure, I retyped it all from scratch to
+make sure it wasn't accidentally using UTF-8 characters.
+
+> What is "< Python"?
+
+The less-than sign was a typo and has been removed.
+
+> What is meant by using Stan for "I/O transforms"? No functionality
+> is described this way in the body of the paper
+
+I removed the reference to transforms; these are used to map
+constrained parameters (as defined in the program) to unconstrained
+parameters (as used by the HMC sampler and optimizer).
+
+> p2:  I would really like to see a standard "Introduction" section that states
+> the high level goals of the Stan project, and described the organization of
+> the paper.  The intro is totally inaccessible to someone not already familiar
+> with Stan.  IMO the current section 1. "Why Stan?" could be more aptly titled
+> "A brief history of Stan’s development", and possibly relegated to an appendix
+> or to supplemental material.
+
+Added a more standard introduction and removed the history.
+
+> "A direct encoding in BUGS... can grind these tools to a halt".  Why?  Do
+>  these tools crash?  Do they fail to iterate?  Are the iterations too
+> slow?
+
+This was in the removed section.  Instead, we briefly mention
+performance and scalability as motivators and cite Radford Neal's
+theoretical analysis and Hoffman and Gelman's practical comparisons
+on motivating problems.
+
+> p3: "This paper is primarily about..." — this should be at the start of the
+> section!  It’s the closest thing in Section 1 to providing a high level
+> description of what this paper is about!
+
+Section 1 is completely revised and starts with what the paper is
+about.
+
+> p5: Section 2: I’d suggest Section 2 be organized around
+> "Core Stan Functionality" in the context of a simple model.
+
+Renamed section to "Core Functionality".  Note that this conflicts with
+Reviewer 1's suggested renaming.
+
+> I’m not clear on what exactly should be in the R dump that Stan
+> reads in.
+
+Clarified with "All of the variables declared in the data block of the
+\proglang{Stan} program must be defined in the data file."
+
+
+> p 8: "Stan’s behavior is fully specified by ... "  How exactly can these
+> parameters be specified?  I assume it’s just with something like
+> "section option=value format", but the only thing that is demonstrated up to
+> this point is specifying "data file=...".  Is the section name always
+> required?
+
+Clarified with:
+
+  The command-line parameters marked \code{Default} may be explicitly
+  set on the command line.  Each value is preceded by the full path to
+  it in the hierarchy; for instance, to set the maximum depth for the
+  no-U-turn sampler, the command would be the following, where backslash
+  indicates a continued line.
+  %
+  \begin{CodeChunk}
+  \begin{CodeInput}
+  > ./bernoulli sample  \
+    algorithm=hmc engine=nuts max_depth=5  \
+    data max_depthfile=bernoulli.data.R
+  \end{CodeInput}
+  \end{CodeChunk}
+
+> What is the n_divergent quantity?
+
+clarified with:
+
+  \code{n\_divergent\_\_} is the number of iterations leading
+  to a numerical instability during integration (e.g., numerical
+  overflow or a positive-definiteness violation)
+
+> p14:  I think the Data Types section should probably come next, followed by
+ what is currently Section 3, 
+
+Swapped.
+
+> which I would rename something like
+> "Model Specification". 
+
+To be very explicit, it's now "Top-Level Blocks and Program
+Execution", which is what the section is about.  The full language
+spec includes the types that are now earlier and the expressions and
+statements later.
+
+> I would also recommend a few sentences indicating the
+> roadmap for the paper at this point.  Something along the lines of
+> "Having demonstrated the key functionality of Stan in section 2, we will now
+> provide more detail on the language by which data and models are specified.
+? We begin with the data types and data structures supported in Stan..."
+
+Done.
+
+> Section 3.1:  this shouldn’t be a separate subsection, this defines the
+> motivating model that is referred to by every subsequent subsection in the
+> section.  It should be described at the top level description of the section.
+
+Done.
+
+> p16: should be a colon at the end of "then defines it to be the
+> standardization of x:"
+
+Done.
+
+> "whereas lambda is constrained..."  I think this should be "kappa", not
+> lambda.
+
+Fixed.
+
+> p 17:  I would cut the part about "Furthermore different sampler ... see
+> section 8 for details", or explain it better if this is an important point.
+> Currently I don’t know what "different instantiations" this is referring to.
+
+Cut.
+
+> "the log probability function I can be defined to return negative infinity or
+> a special not-a-number value".  How?  Is this actually a user defined option,
+> and if so where is it specified?
+
+added:
+
+  both of which are available through built-in
+  functions and may be passed to \code{increment\_log\_prob}.
+
+> p18:  "so the absolute log Jacobian"... this is missing "determinant"
+
+fixed (here and elsewhere in the doc)
+
+> "local variables can be used..."  This is the first mention of local variables,
+> how can they be defined and what are they?  Or just move the Data types
+> section before this section.
+
+moved data types section up
+
+> I think "posterior predictive checks" is a more common phrasing used than
+> "predictive posterior checks".
+
+transposed.
+
+> p19:  "Apply a hierarchical model then considering posterior inference
+> appropriately adjusts for multiple comparisons" — I’m not sure what point
+> this is trying to make and probably just needs rephrasing.  Is the point
+> that posterior summaries of this particular rank quantity have the property
+> of "properly adjusting for multiple comparisons"?  Or just that posterior
+> distributions in general have this property?
+
+Rather than try to make a potentially contentious aside, 
+this was turned into a parenthetical remark
+
+ (for a discussion of multiple comparisions and
+  hierarchical models, see \citep{GelmanEtAl:2012, Efron:2010}).
+
+> It doesn’t seem to be mentioned anywhere how the user can supply non-random
+> initializations.  I assume this is done via the R dump, but I’d like to see
+> how.
+
+Correct.  
+
+> It doesn’t seem to be mentioned anywhere how the user can supply non-random
+> initializations.  I assume this is done via the R dump, but I’d like to see
+> how.
+
+Added paragraph with explanation and syntax.
+
+> "the default initialization is to randomly generate values uniformly on [-2,2]
+> by default".  At least one of the "defaults" is redundant.
+
+Clarified with:
+
+  another interval may be specified with \code{init=x} for
+  some non-negative floating-point value \code{x}.
+
+> "the table is defined assuming HMC or NUTS samplers"  are there currently
+> non-NUTS HMC samplers?
+
+Yes.  Clarified with:
+
+  This table is defined assuming HMC or NUTS, both of which apply the
+  leapfrog integrator to simulate the Hamiltonian dynamics
+  \citep{HoffmanGelman:2014,Neal:2011} of a particle representing a
+  parameter.  Each leapfrog step requires an evaluation of the log
+  density and its gradient.  NUTS automatically adapts the integration
+  time (and hence number of leapfrog steps) each iteration and uses slice
+  sampling for improved acceptance, whereas basic HMC sets integration
+  time statically in the command-line parameters using
+  \code{engine=static int\_time=t}, with \code{t} set to some positive
+  floating point value.
+
+> I feel that the entire section 3.9 should be cut or moved to an appendix.
+
+Cut.
+
+> P21: I think the "Implicit uniform priors" section should be integrated into
+> the "model block" section
+
+moved.
+
+> p22: "uniform over its support":  I assume this should be "its constrained
+> support"?
+
+Reworded to clarify:
+
+  The default distribution for a variable is uniform over its
+  declared (constrained) support.
+
+> Consider moving section 3.11 to an appendix, perhaps titled something like
+> "Best practices" or "general tips"
+
+
+We just removed it, as it's only relevant for the hierarchical model
+under discussion --- there are other tips for other kinds of models,
+but too many to enumerate in this paper (e.g., the multivariate normal
+version reparameterized with non-centered means and Cholesky factor
+covariances).
+
+> In the model block of section 3.11, what is x?
+
+3.11 is no more, but for completeness, x[n] was a predictor.
+
+> "change in sigma is amplified by lower-level parameters" What does
+> "lower level parameters" refer to?
+
+3.11 is no more, but for completeness, it's the beta --- what's at
+the bottom if you write out a directed graphical model BUGS-style.
+
+> p23: Again, I think readability would be improved by moving the data types
+> section to before the "Models" section
+
+Done.
+
+> p24:  I don’t think expressions and type inference warrants a separate section
+> outside of the data types section.  Maybe make it a subsection.
+
+Done.
+
+> "the type of each inference is declared statically..." this sentence is
+> redundant, as the static typing is described in the first sentence of the
+> section.
+
+removed
+
+> p25: maybe add a sentence like "the primary function of the model block is
+> to define the log probability function" at the start of section 6.1 in order
+> to give some context.
+
+Reworded at start of "Model block" section:
+
+  The purpose of the model block is to define the log probability
+  function on the constrained parameter space.
+
+> Can the lp__ be directly manipulated directly?  All the examples involve
+> working with it via the increment_log_prob() function?  This could be made
+> more clear.
+
+No.  Clarified with:
+
+  The \code{increment\_log\_prob} statement is used to add a term to the
+  total log probability function defined by the model block and the log
+  absolute Jacobian determinants of the transforms.  The variable
+  \code{lp\_\_}, representing the currently accumulated total log
+  density, may not be assigned to directly.
+
+> "because computation is only up to a proportion":  I prefer the phrasing
+> "up to a proportionality constant"
+
+clarified with:
+ 
+  Because computation is only up to a proportionality constant (an
+  additive constant on the log scale),
+
+> p 26: Could there be an example demonstrating the usage of print statements?
+
+done
+
+
+> "they need to be vectorized so that shared computations can be reused"
+> — a minor quibble, but to me "vectorize" doesn’t imply this.  It makes sense
+>  that the author’s use of "vectorize" seems to actually mean that
+> functions have been overloaded to accept vector valued arguments,
+> but to me "vectorized" usually means that computations are performed 
+> via vector/matrix operations rather than, e.g. for loops. 
+
+This does technically remove a for loop, but to avoid confusion with
+more typical vectorization operations, including CPU instructions, we
+replaced it with the clearer less loaded phrasing "...need to operate
+directly on vectors".
+
+Also removed all mention of "vectorization" elsewhere.
+
+> p27:  shouldn’t the brackets operator be defined in the data types
+> section?
+
+moved.  
+
+> "...stable than inversion e.g. (y-mu)’"  should have a non-breaking space
+> between (y-mu) and /
+
+added.
+
+> "specializations, multiply..." missing an "and" between specializations and
+> multiply
+
+added.
+
+> semicolon after "self transposed"
+
+corrected.
+
+> "the previous example" which previous example is this referring to?  I’m
+> assuming (y-mu)’Sigma(y-mu)?
+
+made explicit.
+
+
+> p 28: I can’t tell if you mean that it is a user-specified setting to
+> determine whether to throw exceptions, return -infinity, or NaN.  If
+> this a user-setting, what is it, and why would I want to set it?  If it is not a
+> setting, this could be clearer.
+
+removed --- this is configurable at the C++ level, but not through CmdStan.
+
+> p29: "in the example above... the logarithm of sigma need only be computed
+> once"... I thought in the example above sigma was a constant and therefore
+> log(sigma) wouldn’t be calculated at all.
+
+clarified that if sigma is a parameter, log is only computed once.
+
+> I would recommend cutting all material pertaining the MCMC options that have
+> not been implemented.
+
+cut.
+
+> p30 and on:  I would recommend moving sections 9, 10, 11 to a supplementary
+> material called something like "develop notes".  Maybe a thusly titled supp
+> material would also be a good place for the "a brief history of Stan’s
+> development" from section 1.
+
+Section 9 was cut already.  
+
+Section 10 and 11 moved to appendices.  I put the appendices before
+the bibliography.  Should they be broken out into some kind of
+supplementary material.
