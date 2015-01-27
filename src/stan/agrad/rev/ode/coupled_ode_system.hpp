@@ -453,7 +453,6 @@ namespace stan {
         }
 
         add_initial_values(y0_, y_return);
-
         return y_return;
       }
 
