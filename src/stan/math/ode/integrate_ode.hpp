@@ -36,9 +36,7 @@ namespace stan {
 				public:
 					int numberOfEquations() const { return cos.size(); }
 					int rhs(const double & t, double y[], double ydot[]) {
-						std::copy(&y[0], &y[cos.size()], y_t.begin());
-						cos(y_t, dy_dt, t);
-						std::copy(dy_dt.begin(), dy_dt.end(), &ydot[0]);
+						cos(y, ydot, t);
 						return 0;
 					}
 
@@ -104,11 +102,11 @@ namespace stan {
                   const std::vector<T2>& theta,
                   const std::vector<double>& x,
                   const std::vector<int>& x_int,
-                  std::ostream* msgs) {            
-      using boost::numeric::odeint::integrate_times;  
-      using boost::numeric::odeint::make_dense_output;  
+                  std::ostream* msgs) {
+      using boost::numeric::odeint::integrate_times;
+      using boost::numeric::odeint::make_dense_output;
       using boost::numeric::odeint::runge_kutta_dopri5;
-      
+
       stan::error_handling::check_finite("integrate_ode", "initial state", y0);
       stan::error_handling::check_finite("integrate_ode", "initial time", t0);
       stan::error_handling::check_finite("integrate_ode", "times", ts);
