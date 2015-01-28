@@ -111,6 +111,9 @@ namespace stan {
 				std::copy(dy_dt_.begin(), dy_dt_.end(), &dy_dy[0]);
 			}
 
+			bool hasJacobian() const { return false; }
+			void jacobian(const double y[], double *J[], double t){}
+
       /**
        * Returns the size of the coupled system.
        *

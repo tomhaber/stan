@@ -52,6 +52,53 @@ namespace stan {
 
 			public:
 					void gradient_yt(int i, double t, const std::vector<double> & y, const std::vector<double> & theta, std::vector<double> & grad) {
+						setup(y, theta);
+
+						nested_ad ad;
+						std::vector<stan::agrad::var> dy_dt_temp;
+						dy_dt_temp = f_(t, y_temp_, theta_temp_, x_,x_int_,msgs_);
+
+						grad.clear();
+						dy_dt_temp[i].grad(vars_, grad);
+					}
+
+					void gradient_y(int i, double t, const std::vector<double> & y, const std::vector<double> & theta, std::vector<double> & grad) {
+						setup(y);
+
+						nested_ad ad;
+						std::vector<stan::agrad::var> dy_dt_temp;
+						dy_dt_temp = f_(t, y_temp_, theta, x_,x_int_,msgs_);
+
+						grad.clear();
+						dy_dt_temp[i].grad(vars_, grad);
+					}
+
+					void hessian_yt(int i, int j, double t, const std::vector<double> & y, const std::vector<double> & theta,
+										const std::vector<double> & grad, std::vector<double> & hess) {
+						const double epsilon = 1e-6;
+
+						std::vector<double> y_up = y;
+						y_up[j] += epsilon;
+						gradient_yt(i, t, y_up, theta, hess);
+
+						for(int k = 0; k < N_+M_; ++k)
+								hess[k] = (hess[k] - grad[k]) / epsilon;
+					}
+
+					void hessian_y(int i, int j, double t, const std::vector<double> & y, const std::vector<double> & theta,
+										const std::vector<double> & grad, std::vector<double> & hess) {
+						const double epsilon = 1e-6;
+
+						std::vector<double> y_up = y;
+						y_up[j] += epsilon;
+						gradient_yt(i, t, y_up, theta, hess);
+
+						for(int k = 0; k < N_; ++k)
+								hess[k] = (hess[k] - grad[k]) / epsilon;
+					}
+
+			private:
+					void setup(const std::vector<double> & y, const std::vector<double> & theta) {
 						vars_.clear();
 						y_temp_.clear();
 						theta_temp_.clear();
@@ -65,16 +112,9 @@ namespace stan {
 							theta_temp_.push_back(theta[j]);
 							vars_.push_back(theta_temp_[j]);
 						}
-
-						nested_ad ad;
-						std::vector<stan::agrad::var> dy_dt_temp;
-						dy_dt_temp = f_(t, y_temp_, theta_temp_, x_,x_int_,msgs_);
-
-						grad.clear();
-						dy_dt_temp[i].grad(vars_, grad);
 					}
 
-					void gradient_y(int i, double t, const std::vector<double> & y, const std::vector<double> & theta, std::vector<double> & grad) {
+					void setup(const std::vector<double> & y) {
 						vars_.clear();
 						y_temp_.clear();
 
@@ -82,13 +122,6 @@ namespace stan {
 							y_temp_.push_back(y[j]);
 							vars_.push_back(y_temp_[j]);
 						}
-
-						nested_ad ad;
-						std::vector<stan::agrad::var> dy_dt_temp;
-						dy_dt_temp = f_(t, y_temp_, theta, x_,x_int_,msgs_);
-
-						grad.clear();
-						dy_dt_temp[i].grad(vars_, grad);
 					}
 
 			private:
@@ -192,16 +225,14 @@ namespace stan {
 			}
 
       void operator()(const double y[], double dy_dt[], double t) {
-        using std::vector;
-        using stan::agrad::var;
+				std::vector<double> y_base(&y[0], &y[N_]);
+				std::vector<double> dy_dt_base;
 
-        vector<double> y_base(&y[0], &y[N_]);
-				vector<double> dy_dt_base;
         dy_dt_base = f_(t,y_base,theta_dbl_,x_,x_int_,msgs_);
         stan::error_handling::check_equal("coupled_ode_system",
                                           "dy_dt", dy_dt_base.size(), N_);
 
-        vector<double> grad;
+				std::vector<double> grad;
 				ad_helper<F> ad(f_, N_, M_, x_, x_int_, msgs_);
         for (int i = 0; i < N_; i++) {
 					ad.gradient_yt(i, t, y_base, theta_dbl_, grad);
@@ -219,6 +250,35 @@ namespace stan {
 					}
         }
       }
+
+			bool hasJacobian() const { return true; }
+			void jacobian(const double y[], double *J[], double t) {
+				std::vector<double> y_base(&y[0], &y[N_]);
+				std::vector<double> grad, hess;
+
+				ad_helper<F> ad(f_, N_, M_, x_, x_int_, msgs_);
+				for (int i = 0; i < N_; i++) {
+					ad.gradient_yt(i, t, y_base, theta_dbl_, grad);
+
+					for (int l = 0; l < N_; l++) {
+						J[l][i] = grad[l];
+
+						ad.hessian_yt(i, l, t, y_base, theta_dbl_, grad, hess);
+						for (int j = 0; j < M_; j++) {
+							double temp_deriv = hess[N_ + j];
+							for (int k = 0; k < N_; k++)
+								temp_deriv += y[N_ + N_ * j + k] * hess[k];
+
+							J[l][N_ + i + j * N_] = temp_deriv;
+						}
+					}
+				}
+
+				for (int j = 0; j < M_; j++)
+					for (int i = 0; i < N_; i++)
+						for (int l = 0; l < N_; l++)
+							J[N_ + l + j * N_][N_ + i + j * N_] = J[l][i];
+			}
 
       /**
        * Returns the size of the coupled system.
@@ -413,6 +473,38 @@ namespace stan {
 					}
         }
       }
+
+			bool hasJacobian() const { return true; }
+			void jacobian(const double y[], double *J[], double t) {
+				std::vector<double> y_base(&y[0], &y[N_]);
+        for (int n = 0; n < N_; n++)
+          y_base[n] += y0_dbl_[n];
+
+				std::vector<double> grad, hess;
+
+				ad_helper<F> ad(f_, N_, M_, x_, x_int_, msgs_);
+				for (int i = 0; i < N_; i++) {
+					ad.gradient_y(i, t, y_base, theta_dbl_, grad);
+
+					for (int l = 0; l < N_; l++) {
+						J[l][i] = grad[l];
+
+						ad.hessian_y(i, l, t, y_base, theta_dbl_, grad, hess);
+						for (int j = 0; j < N_; j++) {
+							double temp_deriv = hess[j];
+							for (int k = 0; k < N_; k++)
+								temp_deriv += y[N_ + N_ * j + k] * hess[k];
+
+							J[l][N_ + i + j * N_] = temp_deriv;
+						}
+					}
+				}
+
+				for (int j = 0; j < N_; j++)
+					for (int i = 0; i < N_; i++)
+						for (int l = 0; l < N_; l++)
+							J[N_ + l + j * N_][N_ + i + j * N_] = J[l][i];
+			}
 
       /**
        * Returns the size of the coupled system.
@@ -626,6 +718,38 @@ namespace stan {
 					}
         }
       }
+
+			bool hasJacobian() const { return true; }
+			void jacobian(const double y[], double *J[], double t) {
+				std::vector<double> y_base(&y[0], &y[N_]);
+        for (int n = 0; n < N_; n++)
+          y_base[n] += y0_dbl_[n];
+
+				std::vector<double> grad, hess;
+
+				ad_helper<F> ad(f_, N_, M_, x_, x_int_, msgs_);
+				for (int i = 0; i < N_; i++) {
+					ad.gradient_yt(i, t, y_base, theta_dbl_, grad);
+
+					for (int l = 0; l < N_; l++) {
+						J[l][i] = grad[l];
+
+						ad.hessian_yt(i, l, t, y_base, theta_dbl_, grad, hess);
+						for (int j = 0; j < N_+M_; j++) {
+							double temp_deriv = hess[j];
+							for (int k = 0; k < N_; k++)
+								temp_deriv += y[N_ + N_ * j + k] * hess[k];
+
+							J[l][N_ + i + j * N_] = temp_deriv;
+						}
+					}
+				}
+
+				for (int j = 0; j < N_; j++)
+					for (int i = 0; i < N_; i++)
+						for (int l = 0; l < N_; l++)
+							J[N_ + l + j * N_][N_ + i + j * N_] = J[l][i];
+			}
 
       /**
        * Returns the size of the coupled system.

@@ -40,6 +40,12 @@ namespace stan {
 						return 0;
 					}
 
+					bool hasJacobian() const { return cos.hasJacobian(); }
+					int jacobian(const double t, const double y[], double *J[]) {
+						cos.jacobian(y, J, t);
+						return 0;
+					}
+
 				public:
 					inline std::vector<double> initial_state() {
 						return cos.initial_state();
