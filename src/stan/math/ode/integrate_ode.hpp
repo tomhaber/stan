@@ -122,7 +122,7 @@ namespace stan {
       stan::error_handling::check_nonzero_size("integrate_ode", "times", ts);
       stan::error_handling::check_nonzero_size("integrate_ode", "initial state", y0);
       stan::error_handling::check_ordered("integrate_ode", "times", ts);
-      stan::error_handling::check_less("integrate_ode", "initial time", t0, ts[0]);
+      //stan::error_handling::check_less("integrate_ode", "initial time", t0, ts[0]);
 
       const double absolute_tolerance = 1e-12;
       const double relative_tolerance = 1e-9;

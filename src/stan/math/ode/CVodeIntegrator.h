@@ -104,7 +104,7 @@ CVodeIntegrator::~CVodeIntegrator() {
 }
 
 void CVodeIntegrator::integrateTo( const double tOut ) {
-	if( tOut <= currentTime_ ) return;
+	if( tOut == currentTime_ ) return;
 
 	int flag = CVode( cvodeMem_, tOut, nvCurrentState_, &currentTime_, CV_NORMAL );
 	if( flag != CV_SUCCESS ) {
