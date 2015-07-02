@@ -52,9 +52,9 @@ namespace stan {
 
 			public:
 					void gradient_yt(int i, double t, const std::vector<double> & y, const std::vector<double> & theta, std::vector<double> & grad) {
+						nested_ad ad;
 						setup(y, theta);
 
-						nested_ad ad;
 						std::vector<stan::agrad::var> dy_dt_temp;
 						dy_dt_temp = f_(t, y_temp_, theta_temp_, x_,x_int_,msgs_);
 
@@ -63,9 +63,9 @@ namespace stan {
 					}
 
 					void gradient_y(int i, double t, const std::vector<double> & y, const std::vector<double> & theta, std::vector<double> & grad) {
+						nested_ad ad;
 						setup(y);
 
-						nested_ad ad;
 						std::vector<stan::agrad::var> dy_dt_temp;
 						dy_dt_temp = f_(t, y_temp_, theta, x_,x_int_,msgs_);
 
